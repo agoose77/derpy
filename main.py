@@ -48,6 +48,11 @@ class GrammarFactory:
     def __init__(self):
         object.__setattr__(self, '_recurrences', {})
 
+    def validate(self):
+        for name, parser in self._recurrences.items():
+            if parser.parser is None:
+                raise ValueError("{} parser is not defined".format(name))
+
     def __getattr__(self, name):
         result = Recurrence()
         self._recurrences[name] = result
@@ -75,7 +80,7 @@ class GrammarFactory:
 g = GrammarFactory()
 
 def emit_program(args):
-    raise NotImplementedError
+    return args
 
 g.file_input = (g.lines & ter('ENDMARKER')) >> emit_program
 
@@ -87,27 +92,27 @@ def emit_line(args):
     print('L', args)
     return args
 
-g.lines = g.empty_line | (ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line
+g.lines = ~((ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line)
 
 def emit_func_def(args):
-    pass
+    return args
 g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
 
 def emit_params(args):
-    pass
+    return args
 g.parameters = (ter('(') & g.zero_plus_params & ter(')')) >> emit_params
 
 def emit_param_list(args):
-    pass
+    return args
 
 def emit_rest_of_params(args):
-    pass
+    return args
 g.rest_of_ids = ~((ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params)
 g.zero_plus_params = (epsilon | (ter('ID') & g.rest_of_ids)>>emit_param_list | ter(','))
 
 
 def emit_small_stmts(args):
-    pass
+    return args
 
 g.more_small_stmts = (ter(';') & g.small_stmt & g.more_small_stmts) >> emit_small_stmts
 zero_plus_small_stmts = +g.more_small_stmts
@@ -124,11 +129,11 @@ g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&
             | ter('<<=') | ter('>>=') | ter('**=') | ter('//=')
 
 def emit_aug_assign_stmt(args):
-    pass
+    return args
 def emit_assign_stmt(args):
-    pass
+    return args
 def emit_expr_stmt(args):
-    pass
+    return args
 g.expr_stmt = (g.many_tests & g.augassign & g.many_tests) >> emit_aug_assign_stmt | \
                      (g.many_tests & ter('=') & g.test_or_tests) >> emit_assign_stmt | \
                      g.test_or_tests >> emit_expr_stmt
@@ -203,7 +208,7 @@ g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & g.while_else_clause
 
 def emit_for_else_clause(args):
     return args
-g.for_else_clause = ~((ter('else') & ter(':') & g.sutie) >> emit_for_else_clause)
+g.for_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_for_else_clause)
 def emit_for_stmt(args):
     return args
 g.for_stmt = (ter('for') & ter('ID') & ter('in') & g.test & ter(':') & g.suite & g.for_else_clause) >> emit_for_stmt
@@ -277,6 +282,14 @@ def emit_comparison(args):
     return args
 g.comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
 
+def emit_zero_plus_comps(args):
+    return args
+g.zero_plus_comps = ~((g.comparison_type & g.star_expr & g.zero_plus_comps) >> emit_zero_plus_comps)
+
+def emit_lambda_def(args):
+    return args
+g.lambdef = (ter('lambda') & g.zero_plus_params & ter(':') & g.test) >> emit_lambda_def
+
 def emit_not_test(args):
     return args
 g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
@@ -290,9 +303,10 @@ def emit_zero_plus_ors(args):
     return args
 g.zero_plus_ors = ~((ter('or') & g.and_test & g.zero_plus_ors) >> emit_zero_plus_ors)
 g.or_test = (g.and_test & g.zero_plus_ors) >> emit_or_test
+
 def emit_test(args):
     return args
-g.test = g.or_test | (g.or_test & ter('if') & g.or_test & ter('else') & g.test) >> emit_test | g.lambdaf
+g.test = g.or_test | (g.or_test & ter('if') & g.or_test & ter('else') & g.test) >> emit_test | g.lambdef
 
 def emit_expr(args):
     return args
@@ -357,6 +371,10 @@ def emit_exponent(args):
     return args
 g.exponent = ~((ter('*') & g.factor) >> emit_exponent)
 
+def emit_indexed(args):
+    return args
+g.indexed = (g.atom & g.zero_plus_trailers) >> emit_indexed
+
 def emit_power(args):
     return args
 g.power = (g.indexed & g.exponent) >> emit_power
@@ -414,11 +432,38 @@ def emit_test_or_tests(args):
     return args
 g.test_or_tests = (g.test & g.zero_plus_args & ~ter(',')) >> emit_test_or_tests
 
+g.dict_or_set_maker = g.dict_maker | g.set_maker
+
+def emit_dict_maker(args):
+    return args
+g.dict_maker = (g.test & ter(':') & g.test & g.test_tuple_prime & ~ter(',')) >> emit_dict_maker
+
+def emit_set_maker(args):
+    return args
+g.set_maker = (g.test & g.test_tuple & ~ter(',')) >> emit_set_maker
+
+def emit_test_tuple(args):
+    return args
+g.test_tuple = ~((ter(',') & g.test & g.test_tuple) >> emit_test_tuple)
+
+def emit_test_tuple_prime(args):
+    return args
+g.test_tuple_prime = ~((ter(',') & g.test & ter(':') & g.test & g.test_tuple_prime) >> emit_test_tuple_prime)
+
+def emit_arg_list(args):
+    return args
+g.arg_list = (g.test & g.zero_plus_args & ~ter(',')) >> emit_arg_list
+
+def emit_zero_plus_args(args):
+    return args
+g.zero_plus_args = ~((ter(',') & g.test & g.zero_plus_args) >> emit_zero_plus_args)
+
+g.validate()
+
 
 if __name__ == "__main__":
     with open("test_file.txt", "r") as f:
         py_tokens = generate_tokens(f.readline)
         tokens = [convert_token(t) for t in py_tokens]
 
-        print(parse(parser, tokens[:2]))
-
+        print(parse(g.func_def, tokens))

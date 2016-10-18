@@ -97,6 +97,15 @@ class Infix:
 
 class BaseParser(Infix, ABC):
 
+    def compact(self):
+        seen = set()
+
+        return self._compact(seen)
+
+    def _compact(self, seen):
+        seen.add(self)
+        return self
+
     @abstractmethod
     def derive(self, token):
         pass
@@ -113,6 +122,9 @@ class Delayable(BaseParser):
     @record('parser', 'token')
     class Delayed(BaseParser):
 
+        def _compact(self, seen):
+            return self.derivative._compact(seen)
+
         @memo_property
         def derivative(self):
             return self.parser._derive(self.token)
@@ -122,6 +134,7 @@ class Delayable(BaseParser):
 
         def derive_null(self):
             return self.derivative.derive_null()
+
 
     @abstractmethod
     def _derive(self, token):
@@ -193,6 +206,9 @@ class Delta(Infix):
 class Recurrence(Delayable):
     parser = None
 
+    def _compact(self, seen):
+        return self.parser._compact(seen)
+
     def _derive(self, token):
         return self.parser.derive(token)
 
@@ -203,6 +219,24 @@ class Recurrence(Delayable):
 # Alt-Concat-Rec
 @record('left', 'right')
 class Alternate(Delayable):
+
+    def __new__(cls, left, right):
+        pass
+
+    def _compact(self, seen):
+        if self not in seen:
+            seen.add(self)
+
+            self.left = self.left._compact(seen)
+            self.right = self.right._compact(seen)
+
+        if left is empty:
+            return right
+
+        elif right is empty:
+            return left
+
+        return self
 
     def _derive(self, token):
         return Alternate(self.left.derive(token), self.right.derive(token))
@@ -216,6 +250,7 @@ class Alternate(Delayable):
 
 @record('left', 'right')
 class Concatenate(Delayable):
+
     def _derive(self, token):
         return Alternate(Concatenate(self.left.derive(token), self.right),
                          Concatenate(Delta(self.left), self.right.derive(token)))
@@ -234,6 +269,17 @@ class Concatenate(Delayable):
 
 @record('parser', 'func')
 class Reduce(Delayable):
+
+    def _compact(self, seen):
+        if self not in seen:
+            seen.add(self)
+            parser = self.parser._compact(seen)
+
+        else:
+            parser = self.parser
+
+
+        return self.parser._compact(seen)
 
     def _derive(self, token):
         return Reduce(self.parser.derive(token), self.func)
@@ -273,7 +319,7 @@ def ter(word):
 
 def parse(parser, tokens):
     for token in tokens:
-        parser = parser.derive(token)
+        parser = parser.derive(token).compact()
 
     return parser.derive_null()
 
