@@ -55,7 +55,7 @@ class GrammarFactory:
         return result
 
     def __setattr__(self, name, value):
-        assert isinstance(value, BaseParser), (name,value)
+        assert isinstance(value, BaseParser), (name, value)
         # Existing parser is either recurrence or non recurrence
         if hasattr(self, name):
             if name in self._recurrences:
@@ -77,7 +77,7 @@ g = GrammarFactory()
 def emit_program(args):
     raise NotImplementedError
 
-file_input = (g.lines & ter('ENDMARKER')) >> emit_program
+g.file_input = (g.lines & ter('ENDMARKER')) >> emit_program
 
 def emit_nl(args):
     print('A',args)
@@ -91,7 +91,7 @@ g.lines = g.empty_line | (ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lin
 
 def emit_func_def(args):
     pass
-func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
+g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
 
 def emit_params(args):
     pass
@@ -109,8 +109,8 @@ g.zero_plus_params = (epsilon | (ter('ID') & g.rest_of_ids)>>emit_param_list | t
 def emit_small_stmts(args):
     pass
 
-more_small_stmts = (ter(';') & g.small_stmt & g.more_small_stmts) >> emit_small_stmts
-zero_plus_small_stmts = +more_small_stmts
+g.more_small_stmts = (ter(';') & g.small_stmt & g.more_small_stmts) >> emit_small_stmts
+zero_plus_small_stmts = +g.more_small_stmts
 end_of_stmts = epsilon & ter('NEWLINE') | (ter(';') & ter('NEWLINE'))
 
 
@@ -120,7 +120,7 @@ g.simple_stmt.parser = g.small_stmt & zero_plus_small_stmts & end_of_stmts
 
 g.small_stmt.parser = g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt
 
-augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') | ter('^=') \
+g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') | ter('^=') \
             | ter('<<=') | ter('>>=') | ter('**=') | ter('//=')
 
 def emit_aug_assign_stmt(args):
@@ -129,7 +129,7 @@ def emit_assign_stmt(args):
     pass
 def emit_expr_stmt(args):
     pass
-g.expr_stmt = (g.many_tests & augassign & g.many_tests) >> emit_aug_assign_stmt | \
+g.expr_stmt = (g.many_tests & g.augassign & g.many_tests) >> emit_aug_assign_stmt | \
                      (g.many_tests & ter('=') & g.test_or_tests) >> emit_assign_stmt | \
                      g.test_or_tests >> emit_expr_stmt
 
@@ -151,101 +151,118 @@ g.break_stmt = ter('break') >> emit_break_stmt
 def emit_continue_stmt(args):
     return args
 g.continue_stmt = ter('continue') >> emit_continue_stmt
-return_expr = ~g.many_tests
+g.return_expr = ~g.many_tests
 
 def emit_from_stmt(args):
     return args
-raise_from = ~((ter('from') & g.test) >> emit_from_stmt)
+g.raise_from = ~((ter('from') & g.test) >> emit_from_stmt)
 
 def emit_raise_new_exception(args):
     return args
-raise_clause = ~((g.test & raise_from) >> emit_raise_new_exception)
-g.return_stmt = ter('return') & return_expr >> emit_continue_stmt
+g.raise_clause = ~((g.test & g.raise_from) >> emit_raise_new_exception)
+g.return_stmt = ter('return') & g.return_expr >> emit_continue_stmt
 
 def emit_raise_stmt(args):
     return args
-g.raise_stmt = (ter('raise') & raise_clause) >> emit_raise_stmt
+g.raise_stmt = (ter('raise') & g.raise_clause) >> emit_raise_stmt
 
 def emit_rest_of_ids(args):
     pass
 g.zero_plus_ids = ~((ter(',') & ter('ID') & g.zero_plus_ids) >> emit_rest_of_ids)
+def emit_global_stmt(args):
+    return args
 g.global_stmt = (ter('global') & ter('ID') & g.zero_plus_ids) >> emit_global_stmt
+def emit_nonlocal_stmt(args):
+    return args
 g.nonlocal_stmt = (ter('nonlocal') & ter('ID') & g.zero_plus_ids) >> emit_nonlocal_stmt
+def emit_rest_of_tests(args):
+    return args
 zero_plus_tests = ~((ter(',') & g.test) >> emit_rest_of_tests)
+def emit_assert_stmt(args):
+    return args
 g.assert_stmt = (ter('assert') & g.test & zero_plus_tests) >> emit_assert_stmt
 g.compound_stmt = g.if_stmt | g.while_stmt | g.for_stmt | g.try_stmt | g.func_def
 
 def emit_elifs(args):
     return args
 
-zero_or_more_elifs = ~((ter('elif') & g.test & ter(':') & g.suite & g.zero_or_more_elifs) >> emit_elifs)
+g.zero_or_more_elifs = ~((ter('elif') & g.test & ter(':') & g.suite & g.zero_or_more_elifs) >> emit_elifs)
 def emit_else_clause(args):
     pass
 
-else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_else_clause)
-g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & (zero_or_more_elifs & else_clause))
+g.else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_else_clause)
+g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & (g.zero_or_more_elifs & g.else_clause))
 
 def emit_while_else_clause(args):
     return args
-while_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_while_else_clause)
+g.while_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_while_else_clause)
 
 def emit_while_stmt(args):
     return args
-g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & while_else_clause) >> emit_while_stmt
+g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & g.while_else_clause) >> emit_while_stmt
 
 def emit_for_else_clause(args):
     return args
-for_else_clause = ~((ter('else') & ter(':') & g.sutie) >> emit_for_else_clause)
-g.for_stmt = (ter('for') & ter('ID') & ter('in') & g.test & ter(':') & g.suite & for_else_clause) >> emit_for_stmt
+g.for_else_clause = ~((ter('else') & ter(':') & g.sutie) >> emit_for_else_clause)
+def emit_for_stmt(args):
+    return args
+g.for_stmt = (ter('for') & ter('ID') & ter('in') & g.test & ter(':') & g.suite & g.for_else_clause) >> emit_for_stmt
 
 def emit_finally_try_block(args):
     return args
-finally_try_block = (ter('finally') & ter(':') & g.suite) >> emit_finally_try_block
+g.finally_try_block = (ter('finally') & ter(':') & g.suite) >> emit_finally_try_block
 
 
 def emit_except_vars(args):
     return args
-except_vars = ~((ter('as') & ter('ID')) >> emit_except_vars)
+g.except_vars = ~((ter('as') & ter('ID')) >> emit_except_vars)
 
 def emit_except_type(args):
     return args
-except_type = ~((g.test & except_vars) >> emit_except_type)
-except_clause = (ter('except') & except_type)
+g.except_type = ~((g.test & g.except_vars) >> emit_except_type)
+g.except_clause = (ter('except') & g.except_type)
 
 def emit_except_else_clause(args):
     return args
-except_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_except_else_clause)
+g.except_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_except_else_clause)
 
 def emit_finally_catch_block(args):
     return args
-finally_catch_block = ~((ter('finally') & ter(':') & g.suite) >> emit_finally_catch_block)
+g.finally_catch_block = ~((ter('finally') & ter(':') & g.suite) >> emit_finally_catch_block)
 
-else_block = except_else_clause >> emit_fail_if_not_parsed
-finally_block = finally_catch_block >> emit_fail_if_not_parsed
+def emit_fail_if_not_parsed(args):
+    return args
 
-g.zero_plus_excepts = ~((except_clause & ter(':') & g.suite & g.zero_plus_excepts) >> emit_except_clauses)
+g.else_block = g.except_else_clause >> emit_fail_if_not_parsed
+g.finally_block = g.finally_catch_block >> emit_fail_if_not_parsed
 
-catch_and_finally_blocks = (except_clause & ter(':') & g.suite & g.zero_plus_excepts & else_block & finally_block) >> emit_except_else_finally
+def emit_except_clauses(args):
+    return args
+g.zero_plus_excepts = ~((g.except_clause & ter(':') & g.suite & g.zero_plus_excepts) >> emit_except_clauses)
 
-exception_handlers = catch_and_finally_blocks | finally_try_block
+def emit_except_else_finally(args):
+    return args
+g.catch_and_finally_blocks = (g.except_clause & ter(':') & g.suite & g.zero_plus_excepts & g.else_block & g.finally_block) >> emit_except_else_finally
+
+g.exception_handlers = g.catch_and_finally_blocks | g.finally_try_block
 def emit_try_stmt(args):
     return args
-g.try_stmt = (ter('try') & ter(':') & g.suite & exception_handlers) >> emit_try_stmt
+g.try_stmt = (ter('try') & ter(':') & g.suite & g.exception_handlers) >> emit_try_stmt
 
 def emit_stmts(args):
     return args
 
-one_plus_stmts = (g.stmt & g.zero_plus_stmts) >> emit_stmts
-g.zero_plus_stmts = ~one_plus_stmts
+g.one_plus_stmts = (g.stmt & g.zero_plus_stmts) >> emit_stmts
+g.zero_plus_stmts = ~g.one_plus_stmts
 
 def emit_suite(args):
     return args
-g.suite = g.simple_stmt | ((ter('NEWLINE') & ter('INDENT') & one_plus_stmts & ter('DEDENT')) >> emit_suite)
+g.suite = g.simple_stmt | ((ter('NEWLINE') & ter('INDENT') & g.one_plus_stmts & ter('DEDENT')) >> emit_suite)
 
 def emit_or_test(args):
     return args
 
-comparison_operator = ter('<') | ter('>') | ter('==') | ter('>=') | ter('<=') | ter('<>') | ter('!=')
+g.comparison_operator = ter('<') | ter('>') | ter('==') | ter('>=') | ter('<=') | ter('<>') | ter('!=')
 
 def emit_comparison_operator(args):
     return args
@@ -253,16 +270,16 @@ def emit_not_in(args):
     return args
 def emit_is_not(args):
     return args
-comparison_type = comparison_operator >> emit_comparison_operator | ter('in') | ter('is') |\
+g.comparison_type = g.comparison_operator >> emit_comparison_operator | ter('in') | ter('is') |\
              (ter('not') & ter('in')) >> emit_not_in | (ter('is') & ter('not')) >> emit_is_not
 
 def emit_comparison(args):
     return args
-comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
+g.comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
 
 def emit_not_test(args):
     return args
-g.not_test = (ter('not') & g.not_test) >> emit_not_test | comparison
+g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
 g.zero_plus_nots = ~((ter('and') & g.not_test & g.zero_plus_nots))
 
 def emit_and_test(args):
@@ -273,6 +290,8 @@ def emit_zero_plus_ors(args):
     return args
 g.zero_plus_ors = ~((ter('or') & g.and_test & g.zero_plus_ors) >> emit_zero_plus_ors)
 g.or_test = (g.and_test & g.zero_plus_ors) >> emit_or_test
+def emit_test(args):
+    return args
 g.test = g.or_test | (g.or_test & ter('if') & g.or_test & ter('else') & g.test) >> emit_test | g.lambdaf
 
 def emit_expr(args):
@@ -281,17 +300,76 @@ g.expr = (g.xor_expr & g.zero_plus_xors) >> emit_expr
 
 def emit_star_expr(args):
     return args
-g.star_expr = (~ter('*') & g.expr) == emit_star_expr
+g.star_expr = (~ter('*') & g.expr) >> emit_star_expr
 
 def emit_xor_expr(args):
     return args
 g.xor_expr = (g.and_expr & g.zero_plus_ands) >> emit_xor_expr
 
-g.zero_plus_xors =  ~
+def emit_zero_plus_xors(args):
+    return args
+g.zero_plus_xors = ~((ter('|') & g.xor_expr & g.zero_plus_xors) >> emit_zero_plus_xors)
+
+def emit_and_expr(args):
+    return args
+g.and_expr = (g.shift_expr & g.zero_plus_shifts) >> emit_and_expr
+
+def emiz_zero_plus_ands(args):
+    return args
+g.zero_plus_ands = ~((ter('^') & g.and_expr & g.zero_plus_ands) >> emiz_zero_plus_ands)
+
+def emit_shift_expr(args):
+    return args
+g.shift_expr = (g.arith_expr & g.zero_plus_arith_exprs) >> emit_shift_expr
+
+def emit_zero_plus_shifts(args):
+    return args
+g.zero_plus_shifts = ~((ter('&') & g.shift_expr & g.zero_plus_shifts) >> emit_zero_plus_shifts)
+
+def emit_arith_expr(args):
+    return args
+g.arith_expr = (g.term & g.zero_plus_adds) >> emit_arith_expr
+
+def emit_zero_plus_arith_exprs(args):
+    return args
+g.zero_plus_arith_exprs = ~(((ter('<<') | ter('>>')) & g.arith_expr & g.zero_plus_arith_exprs) >> emit_zero_plus_arith_exprs)
+
+def emit_zero_plus_adds(args):
+    return args
+g.zero_plus_adds = ~(((ter('+') | ter('-')) & g.term & g.zero_plus_adds) >> emit_zero_plus_adds)
+
+def emit_term(args):
+    return args
+g.term = (g.factor & g.zero_plus_mults) >> emit_term
+
+g.operator = ter('*') | ter('/') | ter('%') | ter('//')
+
+def emit_zero_plus_mults(args):
+    return args
+g.zero_plus_mults = ~((g.operator & g.factor & g.zero_plus_mults) >> emit_zero_plus_mults)
+
+g.operator_choice = ter('+') | ter('-') | ter('~')
+def emit_factor(args):
+    return args
+g.factor = (g.power | g.operator_choice & g.factor) >> emit_factor
+
+def emit_exponent(args):
+    return args
+g.exponent = ~((ter('*') & g.factor) >> emit_exponent)
+
+def emit_power(args):
+    return args
+g.power = (g.indexed & g.exponent) >> emit_power
 
 # Atom
-atom = (g.tuple | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string >> emit_string |
-        ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
+def emit_id(args):
+    return args
+def emit_string(args):
+    return args
+def emit_dots(args):
+    return args
+g.atom = (g.tuple | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string >> emit_string |
+            ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
 
 # Tuple
 def emit_tuple(args):
@@ -313,9 +391,28 @@ g.dict = (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict
 # String
 def emit_string(args):
     pass
-zero_plus_strs = Recurrence()
-g.string = (ter('STRING') & zero_plus_strs) >> emit_string
-zero_plus_strs = +g.string
+g.string = (ter('STRING') & g.zero_plus_strs) >> emit_string
+g.zero_plus_strs = ~(g.string & g.zero_plus_strs)
+
+def emit_trailer_tuple(args):
+    return args
+def emit_subscript(args):
+    return args
+def emit_method_call(args):
+    return args
+g.method_call = ter('.') & ter('ID')
+g.subscript = ter('[') & g.test_or_tests & ter(']')
+g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_trailer_tuple | g.subscript >> emit_subscript | g.method_call >> emit_method_call
+
+def emit_zero_plus_trailers(args):
+    return args
+g.zero_plus_trailers = ~((g.trailer & g.zero_plus_trailers) >> emit_zero_plus_trailers)
+def emit_many_tests(args):
+    return args
+g.many_tests = (g.test & g.test_tuple & ~ter(',')) >> emit_many_tests
+def emit_test_or_tests(args):
+    return args
+g.test_or_tests = (g.test & g.zero_plus_args & ~ter(',')) >> emit_test_or_tests
 
 
 if __name__ == "__main__":
