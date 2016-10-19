@@ -3,7 +3,7 @@ from tokenize import generate_tokens
 import token
 from keyword import iskeyword
 
-from derp import parse, ter, empty_string, unpack, Recurrence, BaseParser
+from derp import parse, to_text, ter, empty_string, unpack, Recurrence, BaseParser
 
 
 Token = namedtuple("Token", "first second")
@@ -61,6 +61,7 @@ class GrammarFactory:
 
     def __setattr__(self, name, value):
         assert isinstance(value, BaseParser), (name, value)
+
         # Existing parser is either recurrence or non recurrence
         if hasattr(self, name):
             if name in self._recurrences:
@@ -98,7 +99,7 @@ def emit_func_def(args):
     _, name, params, _ = unpack(args)
     print("FUNC DEF", name, params)
     return "<def {}{}>".format(name, params)
-g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') | g.suite) >> emit_func_def
+g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
 
 def emit_params(args):
     _, params, _ = unpack(args)
@@ -111,8 +112,10 @@ def emit_param_list(args):
 def emit_rest_of_params(args):
     _, name, _ = unpack(args)
     return name
-g.rest_of_ids = ~((ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params)
-g.zero_plus_params = ~(((ter('ID') & g.rest_of_ids) >> emit_param_list) | ter(','))
+
+g.rest_of_ids = empty_string | (ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params
+
+g.zero_plus_params = empty_string | (ter('ID') & g.rest_of_ids) >> emit_param_list | ter(',')#~(((ter('ID') & g.rest_of_ids) >> emit_param_list) | ter(','))
 
 
 def emit_small_stmts(args):
@@ -469,6 +472,6 @@ if __name__ == "__main__":
     with open("test_file.txt", "r") as f:
         py_tokens = generate_tokens(f.readline)
         tokens = [convert_token(t) for t in py_tokens]
-        params = tokens[:8]
-        print(params)
-        print(parse(g.func_def, params))
+        # print(tokens)
+        print(parse(g.func_def, tokens[:-1]))
+        # print(tokens[2:7])
