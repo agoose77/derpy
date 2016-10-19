@@ -48,7 +48,7 @@ def lazy(f, *args, **kwargs):
     return proxy()
 
 
-def record(*fields):
+def fields(*fields):
     def decorator(cls):
         cls_dict = {}
         cls_dict['__slots__'] = tuple(fields)
@@ -66,7 +66,7 @@ def record(*fields):
     return decorator
 
 
-@record('first', 'second')
+@fields('first', 'second')
 class Token:
     pass
 
@@ -119,7 +119,7 @@ class Delayable(BaseParser):
 
     _null_set = None
 
-    @record('parser', 'token')
+    @fields('parser', 'token')
     class Lazy(BaseParser):
 
         def _compact(self, seen):
@@ -161,41 +161,40 @@ class Delayable(BaseParser):
             if self._null_set == new_set:
                 return self._null_set
 
-# TODO emptystring???
-@record('trees')
+
+@fields('_trees')
 class Epsilon(BaseParser):
-
-    def __new__(self, trees=None):
-        if trees is None:
-            trees = set()
-
-        elif not isinstance(trees, set):
-            raise ValueError(trees)
-
-        if not trees:
-            return empty
-
-    @memo_property
-    @classmethod
-    def empty_string(cls):
-        return cls.from_value('')
 
     @classmethod
     def from_value(cls, value):
         return cls({value})
 
-    @classmethod
-    def from_set(cls, set_):
-        return cls(set_)
+    def __new__(cls, trees=None):
+        if trees is None:
+            return empty_string
+
+        if not isinstance(trees, set):
+            raise ValueError(trees)
+
+        if not trees:
+            return empty
+
+        return super().__new__(cls)
+
+    @property
+    def size(self):
+        return len(self._trees)
+
+    def derive_null(self):
+        return self._trees
 
     def derive(self, token):
         return empty
 
-    def derive_null(self):
-        return {self.value}
+empty_string = Epsilon.from_value('')
 
 
-@record()
+@fields()
 class _Empty(BaseParser):
 
     def derive(self, token):
@@ -204,22 +203,24 @@ class _Empty(BaseParser):
     def derive_null(self):
         return set()
 
+empty = _Empty()
 
-@record('string')
+
+@fields('string')
 class Ter(BaseParser):
 
     def derive(self, token):
-        return Epsilon(token.second) if token.first == self.string else empty
+        return Epsilon.from_value(token.second) if token.first == self.string else empty
 
     def derive_null(self):
         return set()
 
 
-@record('parser')
+@fields('parser')
 class Delta(Infix):
 
     def _compact(self, seen):
-        return Epsilon(self.parser.deriveNull())
+        return Epsilon(self.parser.derive_null())
 
     def derive(self, token):
         return empty
@@ -242,7 +243,7 @@ class Recurrence(Delayable):
 
 
 # Alt-Concat-Rec
-@record('left', 'right')
+@fields('left', 'right')
 class Alternate(Delayable):
 
     def __new__(cls, left, right):
@@ -252,7 +253,7 @@ class Alternate(Delayable):
         if right is empty:
             return left
 
-        return super().__new__(cls, left, right)
+        return super().__new__(cls)
 
     def _compact(self, seen):
         if self not in seen:
@@ -279,17 +280,17 @@ class Alternate(Delayable):
         return deriv_left | deriv_right
 
 
-@record('left', 'right')
+@fields('left', 'right')
 class Concatenate(Delayable):
 
     def __new__(cls, left, right):
         if left is empty or right is empty:
             return empty
 
-        return super().__new__(cls, left, right)
+        return super().__new__(cls)
 
     def _compact(self, seen):
-        if not self in seen:
+        if self not in seen:
             seen.add(self)
 
             self.left = self.left._compact(seen)
@@ -324,7 +325,7 @@ class Concatenate(Delayable):
         return result
 
 
-@record('parser', 'func')
+@fields('parser', 'func')
 class Reduce(Delayable):
 
     def _compact(self, seen):
@@ -357,13 +358,12 @@ class Reduce(Delayable):
 
 def repeat(parser):
     r = Recurrence()
-    r.parser = Alternate(epsilon, Concatenate(r, parser))
+    r.parser = Alternate(empty_string, Concatenate(r, parser))
     return r
 
 
 def optional(parser):
-    return Alternate(epsilon, parser)
-
+    return Alternate(empty_string, parser)
 
 
 Infix._concat = Concatenate
@@ -373,17 +373,14 @@ Infix._reduce = Reduce
 Infix._optional = staticmethod(optional)
 
 
-epsilon = Epsilon()
-empty = _Empty()
-
-
 def ter(word):
     return Ter(word)
 
 
 def parse(parser, tokens):
     for token in tokens:
-        parser = parser.derive(token).compact()
+        parser = parser.derive(token)
+        print(parser)
 
     return parser.derive_null()
 
@@ -391,7 +388,7 @@ def parse(parser, tokens):
 # examples
 if __name__ == '__main__' and 1:
     # S = Recurrence()
-    # a = epsilon | (S & ter('1'))
+    # a = empty_string | (S & ter('1'))
     # S.parser = a
     a = +ter('1')
 

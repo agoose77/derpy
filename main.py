@@ -3,7 +3,7 @@ from tokenize import generate_tokens
 import token
 from keyword import iskeyword
 
-from derp import parse, ter, epsilon, empty, Recurrence, BaseParser
+from derp import parse, ter, empty_string, empty, Recurrence, BaseParser
 
 
 Token = namedtuple("Token", "first second")
@@ -108,7 +108,7 @@ def emit_param_list(args):
 def emit_rest_of_params(args):
     return args
 g.rest_of_ids = ~((ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params)
-g.zero_plus_params = (epsilon | (ter('ID') & g.rest_of_ids)>>emit_param_list | ter(','))
+g.zero_plus_params = ~((ter('ID') & g.rest_of_ids)>>emit_param_list | ter(','))
 
 
 def emit_small_stmts(args):
@@ -116,7 +116,7 @@ def emit_small_stmts(args):
 
 g.more_small_stmts = (ter(';') & g.small_stmt & g.more_small_stmts) >> emit_small_stmts
 zero_plus_small_stmts = +g.more_small_stmts
-end_of_stmts = epsilon & ter('NEWLINE') | (ter(';') & ter('NEWLINE'))
+end_of_stmts = empty_string & ter('NEWLINE') | (ter(';') & ter('NEWLINE'))
 
 
 g.stmt.parser = g.simple_stmt | g.compound_stmt
