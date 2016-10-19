@@ -120,7 +120,7 @@ class Delayable(BaseParser):
     _null_set = None
 
     @record('parser', 'token')
-    class Delayed(BaseParser):
+    class Lazy(BaseParser):
 
         def _compact(self, seen):
             return self.derivative._compact(seen)
@@ -135,7 +135,6 @@ class Delayable(BaseParser):
         def derive_null(self):
             return self.derivative.derive_null()
 
-
     @abstractmethod
     def _derive(self, token):
         pass
@@ -146,7 +145,7 @@ class Delayable(BaseParser):
 
     @memo
     def derive(self, token):
-        return self.__class__.Delayed(self, token)
+        return self.__class__.Lazy(self, token)
 
     @memo
     def derive_null(self):
@@ -162,9 +161,32 @@ class Delayable(BaseParser):
             if self._null_set == new_set:
                 return self._null_set
 
-
-@record('value')
+# TODO emptystring???
+@record('trees')
 class Epsilon(BaseParser):
+
+    def __new__(self, trees=None):
+        if trees is None:
+            trees = set()
+
+        elif not isinstance(trees, set):
+            raise ValueError(trees)
+
+        if not trees:
+            return empty
+
+    @memo_property
+    @classmethod
+    def empty_string(cls):
+        return cls.from_value('')
+
+    @classmethod
+    def from_value(cls, value):
+        return cls({value})
+
+    @classmethod
+    def from_set(cls, set_):
+        return cls(set_)
 
     def derive(self, token):
         return empty
@@ -174,7 +196,7 @@ class Epsilon(BaseParser):
 
 
 @record()
-class Empty(BaseParser):
+class _Empty(BaseParser):
 
     def derive(self, token):
         return empty
@@ -195,6 +217,9 @@ class Ter(BaseParser):
 
 @record('parser')
 class Delta(Infix):
+
+    def _compact(self, seen):
+        return Epsilon(self.parser.deriveNull())
 
     def derive(self, token):
         return empty
@@ -221,7 +246,13 @@ class Recurrence(Delayable):
 class Alternate(Delayable):
 
     def __new__(cls, left, right):
-        pass
+        if left is empty:
+            return right
+
+        if right is empty:
+            return left
+
+        return super().__new__(cls, left, right)
 
     def _compact(self, seen):
         if self not in seen:
@@ -230,11 +261,11 @@ class Alternate(Delayable):
             self.left = self.left._compact(seen)
             self.right = self.right._compact(seen)
 
-        if left is empty:
-            return right
+        if self.left is empty:
+            return self.right
 
-        elif right is empty:
-            return left
+        elif self.right is empty:
+            return self.left
 
         return self
 
@@ -250,6 +281,32 @@ class Alternate(Delayable):
 
 @record('left', 'right')
 class Concatenate(Delayable):
+
+    def __new__(cls, left, right):
+        if left is empty or right is empty:
+            return empty
+
+        return super().__new__(cls, left, right)
+
+    def _compact(self, seen):
+        if not self in seen:
+            seen.add(self)
+
+            self.left = self.left._compact(seen)
+            self.right = self.right._compact(seen)
+
+        if self.left is empty or self.right is empty:
+            return empty
+
+        if isinstance(self.left, Epsilon) and self.left.size == 1:
+            result = self.left.derive_null().pop()
+            return Reduce(self.right, lambda t: (result, t))
+
+        if isinstance(self.right, Epsilon) and self.right.size == 1:
+            result = self.right.derive_null().pop()
+            return Reduce(self.left, lambda t: (t, result))
+
+        return self
 
     def _derive(self, token):
         return Alternate(Concatenate(self.left.derive(token), self.right),
@@ -273,13 +330,20 @@ class Reduce(Delayable):
     def _compact(self, seen):
         if self not in seen:
             seen.add(self)
-            parser = self.parser._compact(seen)
+            self.parser = self.parser._compact(seen)
+
+        if self.parser is empty:
+            return empty
+
+        if isinstance(self.parser, self.__class__):
+            sub_reduction = self.parser
+            inner = sub_reduction.func
+            outer = self.func
+            combination = lambda t: outer(inner(t))
+            return Reduce(sub_reduction.parser, combination)
 
         else:
-            parser = self.parser
-
-
-        return self.parser._compact(seen)
+            return self
 
     def _derive(self, token):
         return Reduce(self.parser.derive(token), self.func)
@@ -309,8 +373,8 @@ Infix._reduce = Reduce
 Infix._optional = staticmethod(optional)
 
 
-epsilon = Epsilon('')
-empty = Empty()
+epsilon = Epsilon()
+empty = _Empty()
 
 
 def ter(word):
