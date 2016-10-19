@@ -373,14 +373,22 @@ Infix._reduce = Reduce
 Infix._optional = staticmethod(optional)
 
 
+def unpack(packed):
+    a, b = packed
+    if not isinstance(a, tuple):
+        yield a
+    else:
+        yield from unpack(a)
+    yield b
+
+
 def ter(word):
     return Ter(word)
 
 
 def parse(parser, tokens):
     for token in tokens:
-        parser = parser.derive(token)
-        print(parser)
+        parser = parser.derive(token).compact()
 
     return parser.derive_null()
 

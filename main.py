@@ -3,7 +3,7 @@ from tokenize import generate_tokens
 import token
 from keyword import iskeyword
 
-from derp import parse, ter, empty_string, empty, Recurrence, BaseParser
+from derp import parse, ter, empty_string, unpack, Recurrence, BaseParser
 
 
 Token = namedtuple("Token", "first second")
@@ -95,20 +95,24 @@ def emit_line(args):
 g.lines = ~((ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line)
 
 def emit_func_def(args):
-    return args
-g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
+    _, name, params, _ = unpack(args)
+    print("FUNC DEF", name, params)
+    return "<def {}{}>".format(name, params)
+g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') | g.suite) >> emit_func_def
 
 def emit_params(args):
-    return args
+    _, params, _ = unpack(args)
+    return params
 g.parameters = (ter('(') & g.zero_plus_params & ter(')')) >> emit_params
 
 def emit_param_list(args):
     return args
 
 def emit_rest_of_params(args):
-    return args
+    _, name, _ = unpack(args)
+    return name
 g.rest_of_ids = ~((ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params)
-g.zero_plus_params = ~((ter('ID') & g.rest_of_ids)>>emit_param_list | ter(','))
+g.zero_plus_params = ~(((ter('ID') & g.rest_of_ids) >> emit_param_list) | ter(','))
 
 
 def emit_small_stmts(args):
@@ -465,5 +469,6 @@ if __name__ == "__main__":
     with open("test_file.txt", "r") as f:
         py_tokens = generate_tokens(f.readline)
         tokens = [convert_token(t) for t in py_tokens]
-
-        print(parse(g.func_def, tokens))
+        params = tokens[:8]
+        print(params)
+        print(parse(g.func_def, params))

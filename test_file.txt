@@ -1,2 +1,2 @@
-def func(x, y:int=1):
+def func(x, y):
     print("Hello world")
