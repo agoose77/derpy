@@ -175,111 +175,6 @@ class Delayable(BaseParser):
             if self._null_set == new_set:
                 return self._null_set
 
-    @recursive_repr
-    def to_text(self, seen):
-        return "Empty()"
-
-
-@fields('_trees')
-class Epsilon(BaseParser):
-
-    @classmethod
-    def from_value(cls, value):
-        return cls({value})
-
-    def __new__(cls, trees=None):
-        if trees is None:
-            return empty_string
-
-        if not isinstance(trees, set):
-            raise ValueError(trees)
-
-        if not trees:
-            return empty
-
-        return super().__new__(cls)
-
-    @property
-    def size(self):
-        return len(self._trees)
-
-    def derive_null(self):
-        return self._trees
-
-    def derive(self, token):
-        return empty
-
-    @recursive_repr
-    def to_text(self, seen):
-        return "Eps({!r})".format(self._trees)
-
-empty_string = Epsilon.from_value('')
-
-
-@fields()
-class _Empty(BaseParser):
-
-    def derive(self, token):
-        return empty
-
-    def derive_null(self):
-        return set()
-
-    @recursive_repr
-    def to_text(self, seen):
-        return "Empty()"
-
-
-empty = _Empty()
-
-
-@fields('string')
-class Ter(BaseParser):
-
-    def derive(self, token):
-        return Epsilon.from_value(token.second) if token.first == self.string else empty
-
-    def derive_null(self):
-        return set()
-
-    @recursive_repr
-    def to_text(self, seen):
-        return "Ter({!r})".format(self.string)
-
-
-@fields('parser')
-class Delta(Infix):
-
-    def compact(self, seen):
-        return Epsilon(self.parser.derive_null())
-
-    def derive(self, token):
-        return empty
-
-    def derive_null(self):
-        return self.parser.derive_null()
-
-    @recursive_repr
-    def to_text(self, seen):
-        return "Delta()".format(self.parser)
-
-
-class Recurrence(Delayable):
-    parser = None
-
-    def compact(self, seen):
-        return self.parser.compact(seen)
-
-    def _derive(self, token):
-        return self.parser.derive(token)
-
-    def _derive_null(self):
-        return self.parser.derive_null()
-
-    @recursive_repr
-    def to_text(self, seen):
-        return self.parser.to_text(seen)
-
 
 # Alt-Concat-Rec
 @fields('left', 'right')
@@ -378,6 +273,84 @@ class Concatenate(Delayable):
         return "({} & {})".format(self.left.to_text(seen), self.right.to_text(seen))
 
 
+@fields('parser')
+class Delta(Infix):
+
+    def compact(self, seen):
+        return Epsilon(self.parser.derive_null())
+
+    def derive(self, token):
+        return empty
+
+    def derive_null(self):
+        return self.parser.derive_null()
+
+    def to_text(self, seen):
+        return "Delta()".format(self.parser)
+
+
+@fields()
+class _Empty(BaseParser):
+
+    def derive(self, token):
+        return empty
+
+    def derive_null(self):
+        return set()
+
+    def to_text(self, seen):
+        return "Empty()"
+empty = _Empty()
+
+
+@fields('_trees')
+class Epsilon(BaseParser):
+
+    @classmethod
+    def from_value(cls, value):
+        return cls({value})
+
+    def __new__(cls, trees):
+        if not isinstance(trees, set):
+            raise ValueError(trees)
+
+        if not trees:
+            return empty
+
+        return super().__new__(cls)
+
+    @property
+    def size(self):
+        return len(self._trees)
+
+    def derive(self, token):
+        return empty
+
+    def derive_null(self):
+        return self._trees
+
+    def to_text(self, seen):
+        return "Eps({!r})".format(self._trees)
+empty_string = Epsilon.from_value('')
+
+
+class Recurrence(Delayable):
+    parser = None
+
+    def compact(self, seen):
+        return self.parser.compact(seen)
+
+    def _derive(self, token):
+        return self.parser.derive(token)
+
+    def _derive_null(self):
+        return self.parser.derive_null()
+
+    @recursive_repr
+    def to_text(self, seen):
+        return self.parser.to_text(seen)
+
+
 @fields('parser', 'func')
 class Reduce(Delayable):
 
@@ -389,7 +362,7 @@ class Reduce(Delayable):
         if self.parser is empty:
             return empty
 
-        if isinstance(self.parser, self.__class__):
+        elif isinstance(self.parser, self.__class__):
             sub_reduction = self.parser
             inner = sub_reduction.func
             outer = self.func
@@ -397,7 +370,7 @@ class Reduce(Delayable):
             def combination(token):
                 return outer(inner(token))
 
-            return Reduce(sub_reduction.parser, combination)
+            return self.__class__(sub_reduction.parser, combination)
 
         else:
             return self
@@ -413,7 +386,20 @@ class Reduce(Delayable):
 
     @recursive_repr
     def to_text(self, seen):
-        return "{} >> {}".format(self.parser.to_text(seen), self.func)
+        return "{} >> {}()".format(self.parser.to_text(seen), self.func.__name__)
+
+
+@fields('string')
+class Ter(BaseParser):
+
+    def derive(self, token):
+        return Epsilon.from_value(token.second) if token.first == self.string else empty
+
+    def derive_null(self):
+        return set()
+
+    def to_text(self, seen):
+        return "Ter({!r})".format(self.string)
 
 
 def repeat(parser):
@@ -433,13 +419,44 @@ Infix._reduce = Reduce
 Infix._optional = staticmethod(optional)
 
 
-def unpack(packed):
+def unpack_n(seq, n, first=True):
+    terms = []
+
+    for i in range(n - 1):
+        if first:
+            seq, a = seq
+
+        else:
+            a, seq = seq
+
+        terms.append(a)
+    terms.append(seq)
+
+    if first:
+        terms.reverse()
+
+    return terms
+
+
+def flatten_first(packed):
     a, b = packed
     if not isinstance(a, tuple):
         yield a
     else:
-        yield from unpack(a)
+        yield from flatten_first(a)
     yield b
+
+
+def flatten_last(packed):
+    if len(packed) == 1:
+        yield packed[0]
+        return
+    a, b = packed
+    yield a
+    if not isinstance(b, tuple):
+        yield b
+    else:
+        yield from flatten_last(b)
 
 
 def ter(word):
@@ -448,7 +465,6 @@ def ter(word):
 
 def parse(parser, tokens):
     for token in tokens:
-        print(token, to_text(parser))
         parser = compact(parser.derive(token))
 
     return parser.derive_null()
@@ -467,6 +483,7 @@ if __name__ == '__main__' and 1:
     # S = Recurrence()
     # a = empty_string | (S & ter('1'))
     # S.parser = a
-    a = +ter('1')
-
-    print(parse(a, [Token(t, str(i)) for i, t in enumerate(['1', '1', '1'])]))
+    # a = +ter('1')
+    #
+    # print(parse(a, [Token(t, str(i)) for i, t in enumerate(['1', '1', '1'])]))
+    print(to_text(ter(1) | ter(2) | ter(3)))

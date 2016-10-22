@@ -3,7 +3,8 @@ from tokenize import generate_tokens
 import token
 from keyword import iskeyword
 
-from derp import parse, to_text, ter, empty_string, unpack, Recurrence, BaseParser
+from silk_ast import *
+from derp import parse, to_text, ter, empty_string, flatten_first, flatten_last, Recurrence, BaseParser
 
 
 Token = namedtuple("Token", "first second")
@@ -19,7 +20,7 @@ def convert_token(tok_info):
             return Token('ID', tok_info.string)
 
     elif tok_info.type == token.STRING:
-        return Token('LIT', tok_info.string)
+        return Token('LIT', eval(tok_info.string))
 
     elif tok_info.type == token.NUMBER:
         return Token('NUMBER', tok_info.string)
@@ -78,7 +79,15 @@ class GrammarFactory:
             object.__setattr__(self, name, value)
 
 
+def w(f):
+    def wrapper(args):
+        print("DBG",f.__qualname__)
+        return f(args)
+    return wrapper
+
+
 g = GrammarFactory()
+
 
 def emit_program(args):
     return args
@@ -96,13 +105,13 @@ def emit_line(args):
 g.lines = ~((ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line)
 
 def emit_func_def(args):
-    _, name, params, _ = unpack(args)
+    _, name, params, _ = flatten_first(args)
     print("FUNC DEF", name, params)
     return "<def {}{}>".format(name, params)
 g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
 
 def emit_params(args):
-    _, params, _ = unpack(args)
+    _, params, _ = flatten_first(args)
     return params
 g.parameters = (ter('(') & g.zero_plus_params & ter(')')) >> emit_params
 
@@ -110,8 +119,20 @@ def emit_param_list(args):
     return args
 
 def emit_rest_of_params(args):
-    _, name, _ = unpack(args)
+    _, name, _ = flatten_first(args)
     return name
+
+
+def ep(args):
+    return ''.join(unpack_n(args, 3))
+
+def eas(args):
+    return "<={}>".format(args[1])
+def etyp(args):
+    col, tid = args
+    return "<:{}>".format(tid)
+def epars(args):
+    return args
 
 g.rest_of_ids = empty_string | (ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params
 
@@ -179,7 +200,7 @@ def emit_raise_stmt(args):
 g.raise_stmt = (ter('raise') & g.raise_clause) >> emit_raise_stmt
 
 def emit_rest_of_ids(args):
-    pass
+    return args
 g.zero_plus_ids = ~((ter(',') & ter('ID') & g.zero_plus_ids) >> emit_rest_of_ids)
 def emit_global_stmt(args):
     return args
@@ -200,7 +221,7 @@ def emit_elifs(args):
 
 g.zero_or_more_elifs = ~((ter('elif') & g.test & ter(':') & g.suite & g.zero_or_more_elifs) >> emit_elifs)
 def emit_else_clause(args):
-    pass
+    return args
 
 g.else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_else_clause)
 g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & (g.zero_or_more_elifs & g.else_clause))
@@ -271,9 +292,6 @@ def emit_suite(args):
     return args
 g.suite = g.simple_stmt | ((ter('NEWLINE') & ter('INDENT') & g.one_plus_stmts & ter('DEDENT')) >> emit_suite)
 
-def emit_or_test(args):
-    return args
-
 g.comparison_operator = ter('<') | ter('>') | ter('==') | ter('>=') | ter('<=') | ter('<>') | ter('!=')
 
 def emit_comparison_operator(args):
@@ -286,6 +304,8 @@ g.comparison_type = g.comparison_operator >> emit_comparison_operator | ter('in'
              (ter('not') & ter('in')) >> emit_not_in | (ter('is') & ter('not')) >> emit_is_not
 
 def emit_comparison(args):
+    star_expr, any_comps = args
+    print("COMP", star_expr, [any_comps])
     return args
 g.comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
 
@@ -298,32 +318,49 @@ def emit_lambda_def(args):
 g.lambdef = (ter('lambda') & g.zero_plus_params & ter(':') & g.test) >> emit_lambda_def
 
 def emit_not_test(args):
+    _, not_test = args
+    print("NOT", not_test)
     return args
 g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
 g.zero_plus_nots = ~((ter('and') & g.not_test & g.zero_plus_nots))
 
 def emit_and_test(args):
+    not_test, any_nots = args
+    print("AND", not_test, [any_nots])
     return args
 g.and_test = (g.not_test & g.zero_plus_nots) >> emit_and_test
 
 def emit_zero_plus_ors(args):
     return args
 g.zero_plus_ors = ~((ter('or') & g.and_test & g.zero_plus_ors) >> emit_zero_plus_ors)
+
+def emit_or_test(args):
+    and_test, any_ors = args
+    print("OR", and_test, [any_ors])
+    return args
 g.or_test = (g.and_test & g.zero_plus_ors) >> emit_or_test
 
 def emit_test(args):
-    return args
-g.test = g.or_test | (g.or_test & ter('if') & g.or_test & ter('else') & g.test) >> emit_test | g.lambdef
+    ortest1, _, ortest2, _, test_exp = unpack_n(args, 5)
+    return ('TEST@',ortest1, ortest2, test_exp)
+
+g.test = g.or_test | ((g.or_test & ter('if') & g.or_test & ter('else') & g.test) >> emit_test) | g.lambdef
 
 def emit_expr(args):
+    xor, any_xors = args
+    print("EXPR", xor, [any_xors])
     return args
 g.expr = (g.xor_expr & g.zero_plus_xors) >> emit_expr
 
 def emit_star_expr(args):
+    opt_star, expr = args
+    print("STAR_EXPR", opt_star, expr)
     return args
 g.star_expr = (~ter('*') & g.expr) >> emit_star_expr
 
 def emit_xor_expr(args):
+    and_exp, any_ands = args
+    print("XOR_EXP", and_exp, [any_ands])
     return args
 g.xor_expr = (g.and_expr & g.zero_plus_ands) >> emit_xor_expr
 
@@ -332,6 +369,8 @@ def emit_zero_plus_xors(args):
 g.zero_plus_xors = ~((ter('|') & g.xor_expr & g.zero_plus_xors) >> emit_zero_plus_xors)
 
 def emit_and_expr(args):
+    shift_exp, any_shifts = args
+    print("AND_EXP", shift_exp, [any_shifts])
     return args
 g.and_expr = (g.shift_expr & g.zero_plus_shifts) >> emit_and_expr
 
@@ -340,6 +379,8 @@ def emiz_zero_plus_ands(args):
 g.zero_plus_ands = ~((ter('^') & g.and_expr & g.zero_plus_ands) >> emiz_zero_plus_ands)
 
 def emit_shift_expr(args):
+    arith, any_ariths = args
+    print("shift_expr", arith, [any_ariths])
     return args
 g.shift_expr = (g.arith_expr & g.zero_plus_arith_exprs) >> emit_shift_expr
 
@@ -348,6 +389,8 @@ def emit_zero_plus_shifts(args):
 g.zero_plus_shifts = ~((ter('&') & g.shift_expr & g.zero_plus_shifts) >> emit_zero_plus_shifts)
 
 def emit_arith_expr(args):
+    term, any_adds = args
+    print("ARITH", term, [any_adds])
     return args
 g.arith_expr = (g.term & g.zero_plus_adds) >> emit_arith_expr
 
@@ -360,6 +403,8 @@ def emit_zero_plus_adds(args):
 g.zero_plus_adds = ~(((ter('+') | ter('-')) & g.term & g.zero_plus_adds) >> emit_zero_plus_adds)
 
 def emit_term(args):
+    factor, any_mults = args
+    print("TERM", factor, [any_mults])
     return args
 g.term = (g.factor & g.zero_plus_mults) >> emit_term
 
@@ -371,11 +416,14 @@ g.zero_plus_mults = ~((g.operator & g.factor & g.zero_plus_mults) >> emit_zero_p
 
 g.operator_choice = ter('+') | ter('-') | ter('~')
 def emit_factor(args):
+    choice, factor = args
+    print("FACTOPR", choice,factor)
     return args
-g.factor = (g.power | g.operator_choice & g.factor) >> emit_factor
+g.factor = g.power | ((g.operator_choice & g.factor) >> emit_factor)
 
 def emit_exponent(args):
-    return args
+    _, fact = args
+    return fact
 g.exponent = ~((ter('*') & g.factor) >> emit_exponent)
 
 def emit_indexed(args):
@@ -383,6 +431,8 @@ def emit_indexed(args):
 g.indexed = (g.atom & g.zero_plus_trailers) >> emit_indexed
 
 def emit_power(args):
+    indexed, exponnet = args
+    print("POWER", indexed, exponnet)
     return args
 g.power = (g.indexed & g.exponent) >> emit_power
 
@@ -390,33 +440,35 @@ g.power = (g.indexed & g.exponent) >> emit_power
 def emit_id(args):
     return args
 def emit_string(args):
-    return args
+    return ''.join(flatten_last(args))
 def emit_dots(args):
     return args
-g.atom = (g.tuple | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string >> emit_string |
+g.atom = (g.tuple | g.list | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string >> emit_string |
             ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
 
 # Tuple
 def emit_tuple(args):
-    pass
-g.tuple = (ter('(') & ~g.test_or_tests & ter(')'))
+    _, value, _ = flatten_first(args)
+    return value
+g.tuple = (ter('(') & ~g.test_or_tests & ter(')')) >> emit_tuple
 
 
 #List
 def emit_list(args):
-    pass
-g.list = (ter('[') & ~g.dict_or_set_maker & ter(']')) >> emit_list
+    return args
+g.list = (ter('[') & ~g.many_tests & ter(']')) >> emit_list
+
+from derp import unpack_n
 
 # Dict
 def emit_dict(args):
-    pass
+    _, dict_or_set_maker_opt, _ = unpack_n(args, 3)
+    return dict_or_set_maker_opt
 g.dict = (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict
 
 
 # String
-def emit_string(args):
-    pass
-g.string = (ter('STRING') & g.zero_plus_strs) >> emit_string
+g.string = (ter('LIT') & g.zero_plus_strs) >> emit_string
 g.zero_plus_strs = ~(g.string & g.zero_plus_strs)
 
 def emit_trailer_tuple(args):
@@ -442,7 +494,15 @@ g.test_or_tests = (g.test & g.zero_plus_args & ~ter(',')) >> emit_test_or_tests
 g.dict_or_set_maker = g.dict_maker | g.set_maker
 
 def emit_dict_maker(args):
-    return args
+    key, _, val, rest_of_dict, _ = unpack_n(args, 5)
+    if rest_of_dict != '':
+        keys = rest_of_dict.keys + key,
+        vals = rest_of_dict.vals + val,
+    else:
+        keys = key,
+        vals = val,
+
+    return DictNode(keys, vals)
 g.dict_maker = (g.test & ter(':') & g.test & g.test_tuple_prime & ~ter(',')) >> emit_dict_maker
 
 def emit_set_maker(args):
@@ -454,7 +514,18 @@ def emit_test_tuple(args):
 g.test_tuple = ~((ter(',') & g.test & g.test_tuple) >> emit_test_tuple)
 
 def emit_test_tuple_prime(args):
-    return args
+    _, key, _, val, rest_of_tests = unpack_n(args, 5)
+
+    if rest_of_tests != '':
+        keys = rest_of_tests.keys + key,
+        vals = rest_of_tests.vals + val,
+    else:
+        keys = key,
+        vals = val,
+
+    return args#DictNode(keys, vals)
+
+    return ((test1, test2),) + rest_of_tests#TODO
 g.test_tuple_prime = ~((ter(',') & g.test & ter(':') & g.test & g.test_tuple_prime) >> emit_test_tuple_prime)
 
 def emit_arg_list(args):
@@ -472,6 +543,7 @@ if __name__ == "__main__":
     with open("test_file.txt", "r") as f:
         py_tokens = generate_tokens(f.readline)
         tokens = [convert_token(t) for t in py_tokens]
-        # print(tokens)
-        print(parse(g.func_def, tokens[:-1]))
+        # print(tokens))
+        print(parse(g.dict, tokens[:-1]))
         # print(tokens[2:7])
+        print("DONE")

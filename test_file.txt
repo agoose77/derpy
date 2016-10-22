@@ -1,2 +1,1 @@
-def func(x, y):
-    None
+{'x':1}
