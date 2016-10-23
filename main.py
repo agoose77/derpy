@@ -305,6 +305,8 @@ g.comparison_type = g.comparison_operator >> emit_comparison_operator | ter('in'
 
 def emit_comparison(args):
     star_expr, any_comps = args
+    if any_comps == '':
+        return star_expr
     print("COMP", star_expr, [any_comps])
     return args
 g.comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
@@ -320,12 +322,14 @@ g.lambdef = (ter('lambda') & g.zero_plus_params & ter(':') & g.test) >> emit_lam
 def emit_not_test(args):
     _, not_test = args
     print("NOT", not_test)
-    return args
+    return not_test
 g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
 g.zero_plus_nots = ~((ter('and') & g.not_test & g.zero_plus_nots))
 
 def emit_and_test(args):
     not_test, any_nots = args
+    if any_nots == '':
+        return not_test
     print("AND", not_test, [any_nots])
     return args
 g.and_test = (g.not_test & g.zero_plus_nots) >> emit_and_test
@@ -336,6 +340,8 @@ g.zero_plus_ors = ~((ter('or') & g.and_test & g.zero_plus_ors) >> emit_zero_plus
 
 def emit_or_test(args):
     and_test, any_ors = args
+    if any_ors == '':
+        return and_test
     print("OR", and_test, [any_ors])
     return args
 g.or_test = (g.and_test & g.zero_plus_ors) >> emit_or_test
@@ -348,18 +354,25 @@ g.test = g.or_test | ((g.or_test & ter('if') & g.or_test & ter('else') & g.test)
 
 def emit_expr(args):
     xor, any_xors = args
+    if any_xors == '':
+        return xor
     print("EXPR", xor, [any_xors])
     return args
 g.expr = (g.xor_expr & g.zero_plus_xors) >> emit_expr
 
 def emit_star_expr(args):
     opt_star, expr = args
-    print("STAR_EXPR", opt_star, expr)
-    return args
+    if opt_star == '':
+        return expr
+    print("MUL")
+    return StarExpr(expr)
+
 g.star_expr = (~ter('*') & g.expr) >> emit_star_expr
 
 def emit_xor_expr(args):
     and_exp, any_ands = args
+    if any_ands == '':
+        return and_exp
     print("XOR_EXP", and_exp, [any_ands])
     return args
 g.xor_expr = (g.and_expr & g.zero_plus_ands) >> emit_xor_expr
@@ -370,6 +383,9 @@ g.zero_plus_xors = ~((ter('|') & g.xor_expr & g.zero_plus_xors) >> emit_zero_plu
 
 def emit_and_expr(args):
     shift_exp, any_shifts = args
+    if any_shifts == '':
+        return shift_exp
+
     print("AND_EXP", shift_exp, [any_shifts])
     return args
 g.and_expr = (g.shift_expr & g.zero_plus_shifts) >> emit_and_expr
@@ -380,6 +396,8 @@ g.zero_plus_ands = ~((ter('^') & g.and_expr & g.zero_plus_ands) >> emiz_zero_plu
 
 def emit_shift_expr(args):
     arith, any_ariths = args
+    if any_ariths == '':
+        return arith
     print("shift_expr", arith, [any_ariths])
     return args
 g.shift_expr = (g.arith_expr & g.zero_plus_arith_exprs) >> emit_shift_expr
@@ -390,7 +408,9 @@ g.zero_plus_shifts = ~((ter('&') & g.shift_expr & g.zero_plus_shifts) >> emit_ze
 
 def emit_arith_expr(args):
     term, any_adds = args
-    print("ARITH", term, [any_adds])
+    if any_adds == '':
+        return term
+    print("ARITH", term, [any_adds])#TODO
     return args
 g.arith_expr = (g.term & g.zero_plus_adds) >> emit_arith_expr
 
@@ -404,6 +424,9 @@ g.zero_plus_adds = ~(((ter('+') | ter('-')) & g.term & g.zero_plus_adds) >> emit
 
 def emit_term(args):
     factor, any_mults = args
+    if any_mults == '':
+        return factor
+    return TermNode()
     print("TERM", factor, [any_mults])
     return args
 g.term = (g.factor & g.zero_plus_mults) >> emit_term
@@ -411,6 +434,8 @@ g.term = (g.factor & g.zero_plus_mults) >> emit_term
 g.operator = ter('*') | ter('/') | ter('%') | ter('//')
 
 def emit_zero_plus_mults(args):
+    (op, factor), tail = args
+    print("ZEROPLUS", op, factor, tail)
     return args
 g.zero_plus_mults = ~((g.operator & g.factor & g.zero_plus_mults) >> emit_zero_plus_mults)
 
@@ -427,35 +452,41 @@ def emit_exponent(args):
 g.exponent = ~((ter('*') & g.factor) >> emit_exponent)
 
 def emit_indexed(args):
+    atom, trailers = args
+    if trailers == '':
+        return atom
+    print(args)
     return args
 g.indexed = (g.atom & g.zero_plus_trailers) >> emit_indexed
 
 def emit_power(args):
-    indexed, exponnet = args
-    print("POWER", indexed, exponnet)
-    return args
+    indexed, exponent = args
+    print("EM",args)
+    if exponent == '':
+        return indexed
+    return PowerNode(indexed, exponent)
 g.power = (g.indexed & g.exponent) >> emit_power
 
 # Atom
 def emit_id(args):
     return args
-def emit_string(args):
-    return ''.join(flatten_last(args))
+
 def emit_dots(args):
     return args
-g.atom = (g.tuple | g.list | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string >> emit_string |
+g.atom = (g.tuple | g.list | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string |
             ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
 
 # Tuple
 def emit_tuple(args):
     _, value, _ = flatten_first(args)
-    return value
+    return TupleNode(value)
 g.tuple = (ter('(') & ~g.test_or_tests & ter(')')) >> emit_tuple
 
 
 #List
 def emit_list(args):
-    return args
+    _, tests, _ = unpack_n(args, 3)
+    return ListNode(tests)
 g.list = (ter('[') & ~g.many_tests & ter(']')) >> emit_list
 
 from derp import unpack_n
@@ -468,8 +499,14 @@ g.dict = (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict
 
 
 # String
+def emit_string(args):
+    string1, remainder = args
+    if remainder == '':
+        return StringNode(string1)
+    return StringNode(string1+remainder.value)
+
 g.string = (ter('LIT') & g.zero_plus_strs) >> emit_string
-g.zero_plus_strs = ~(g.string & g.zero_plus_strs)
+g.zero_plus_strs = ~((ter('LIT') & g.zero_plus_strs) >> emit_string)
 
 def emit_trailer_tuple(args):
     return args
@@ -484,25 +521,31 @@ g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_trailer_tuple | g.subscr
 def emit_zero_plus_trailers(args):
     return args
 g.zero_plus_trailers = ~((g.trailer & g.zero_plus_trailers) >> emit_zero_plus_trailers)
+
 def emit_many_tests(args):
-    return args
+    test, test_tuple, _ = unpack_n(args, 3)
+    if test_tuple == '':
+        return test,
+    return (test,) + test_tuple
+
 g.many_tests = (g.test & g.test_tuple & ~ter(',')) >> emit_many_tests
 def emit_test_or_tests(args):
-    return args
+    first, remainder, _ = unpack_n(args, 3)
+    if remainder == '':
+        return first,
+    return (first,) + remainder
+
 g.test_or_tests = (g.test & g.zero_plus_args & ~ter(',')) >> emit_test_or_tests
 
 g.dict_or_set_maker = g.dict_maker | g.set_maker
 
 def emit_dict_maker(args):
     key, _, val, rest_of_dict, _ = unpack_n(args, 5)
-    if rest_of_dict != '':
-        keys = rest_of_dict.keys + key,
-        vals = rest_of_dict.vals + val,
-    else:
-        keys = key,
-        vals = val,
+    if rest_of_dict == '':
+        return DictNode((key,), (val,))
 
-    return DictNode(keys, vals)
+    return DictNode(rest_of_dict.keys+(key,),
+                    rest_of_dict.values+(val,))
 g.dict_maker = (g.test & ter(':') & g.test & g.test_tuple_prime & ~ter(',')) >> emit_dict_maker
 
 def emit_set_maker(args):
@@ -510,7 +553,11 @@ def emit_set_maker(args):
 g.set_maker = (g.test & g.test_tuple & ~ter(',')) >> emit_set_maker
 
 def emit_test_tuple(args):
-    return args
+    _, test, test_tuple = unpack_n(args, 3)
+    if test_tuple == '':
+        return test,
+    return (test,) + test_tuple
+
 g.test_tuple = ~((ter(',') & g.test & g.test_tuple) >> emit_test_tuple)
 
 def emit_test_tuple_prime(args):
@@ -533,7 +580,11 @@ def emit_arg_list(args):
 g.arg_list = (g.test & g.zero_plus_args & ~ter(',')) >> emit_arg_list
 
 def emit_zero_plus_args(args):
-    return args
+    _, test, remainder = unpack_n(args, 3)
+    if remainder == '':
+        return (test,)
+    return (test,) + remainder
+
 g.zero_plus_args = ~((ter(',') & g.test & g.zero_plus_args) >> emit_zero_plus_args)
 
 g.validate()
@@ -544,6 +595,6 @@ if __name__ == "__main__":
         py_tokens = generate_tokens(f.readline)
         tokens = [convert_token(t) for t in py_tokens]
         # print(tokens))
-        print(parse(g.dict, tokens[:-1]))
+        print(parse(g.del_stmt, tokens[:-1]))
         # print(tokens[2:7])
         print("DONE")

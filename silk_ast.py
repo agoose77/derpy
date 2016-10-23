@@ -19,3 +19,8 @@ record = namedtuple
 
 
 DictNode = namedtuple('DictNode', 'keys values')
+StringNode = namedtuple('String', 'value')
+PowerNode = namedtuple('Power', 'coefficient power')
+StarExpr = namedtuple('StarExpr', 'expr')
+ListNode = namedtuple('List', 'values')
+TupleNode = namedtuple('Tuple', 'values')
