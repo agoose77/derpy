@@ -5,7 +5,7 @@ import tokenize
 from keyword import iskeyword
 
 from silk_ast import *
-from derp import parse, to_text, ter, empty_string, Recurrence, BaseParser
+from derp import parse, to_text, ter, empty_string, Recurrence, BaseParser, unpack_n
 
 
 Token = namedtuple("Token", "first second")
@@ -165,7 +165,18 @@ g.expr_stmt = (g.many_tests & g.augassign & g.many_tests) >> emit_aug_assign_stm
 
 def emit_del_stmt(args):
     return args
-g.del_stmt = (ter('del') & g.star_expr) >> emit_del_stmt
+
+
+def emit_expr_list(args):
+    exp1, opt_exp, _ = unpack_n(args, 3)
+    if opt_exp == '':
+        return exp1,
+    _, following_exp = opt_exp
+    return (exp1,) + following_exp
+
+
+g.expr_list = (g.star_expr & ~(ter(',') & g.expr_list) & ~ter(',')) >> emit_expr_list
+g.del_stmt = (ter('del') & g.expr_list) >> emit_del_stmt
 
 def emit_pass_stmt(args):
     return PassNode()
@@ -340,13 +351,15 @@ g.comparison_type = g.comparison_operator >> emit_comparison_operator | ter('in'
              (ter('not') & ter('in')) >> emit_not_in | (ter('is') & ter('not')) >> emit_is_not
 
 def emit_comparison(args):
-    star_expr, any_comps = args
+    expr, any_comps = args
     if any_comps == '':
-        return star_expr
+        return expr
 
     ops, exprs = any_comps
-    return ComparisonNode(star_expr, ops,  exprs)
-g.comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
+    return ComparisonNode(expr, ops, exprs)
+
+
+g.comparison = (g.expr & g.zero_plus_comps) >> emit_comparison
 
 def emit_zero_plus_comps(args):
     op, expr, remainder = unpack_n(args, 3)
@@ -491,7 +504,6 @@ def emit_atom_expr(args):
     if trailers == '':
         return atom
 
-    print(trailers, "TRAIL")
     root = atom
     for cls, args in trailers:
         root = cls(root, *args)
@@ -532,8 +544,6 @@ def emit_list(args):
     _, values, _ = unpack_n(args, 3)
     return ListNode(values)
 g.list = (ter('[') & ~g.many_tests & ter(']')) >> emit_list
-
-from derp import unpack_n
 
 # Dict
 def emit_dict_or_set(args):
@@ -625,9 +635,61 @@ def emit_test_tuple_prime(args):
     return ((test1, test2),) + rest_of_tests#TODO
 g.test_tuple_prime = ~((ter(',') & g.test & ter(':') & g.test & g.test_tuple_prime) >> emit_test_tuple_prime)
 
-def emit_arg_list(args):
-    return args
-g.arg_list = (g.test & g.zero_plus_args & ~ter(',')) >> emit_arg_list
+Arg = namedtuple('Arg', 'name value unpack')
+
+
+def emit_arg(name):
+    return Arg(name, None, None)
+
+
+def emit_kwarg(args):
+    name, _, value = unpack_n(args, 3)
+    return Arg(name, value, None)
+
+
+def emit_unpack_kwarg(args):
+    _, name = args
+    return Arg(name, None, 'kwargs')
+
+
+def emit_unpack_arg(args):
+    _, name = args
+    return Arg(name, None, 'args')
+
+
+g.argument = g.test >> emit_arg | (g.test & ter('=') & g.test) >> emit_kwarg | (ter(
+    '**') & g.test) >> emit_unpack_kwarg | (ter('*') & g.test) >> emit_unpack_arg
+
+
+def emit_concat_arg_list(args):
+    arg, other = args
+    if other == '':
+        return arg,
+    _, other_args = other
+    if other_args == '':
+        return arg,
+    return (arg,) + other_args
+
+
+g.zero_plus_arg_list = ~((g.argument & ~(ter(',') & g.zero_plus_arg_list)) >> emit_concat_arg_list)
+
+
+def emit_arg_list(all_args):
+    encountered_kw = False
+    if all_args == '':
+        return all_args
+
+    for arg in all_args:
+        if not (arg.value is None or arg.unpack in {None, 'args'}):
+            encountered_kw = True
+        else:
+            if encountered_kw:
+                raise SyntaxError('Encountered non keyword argument after keyword args')
+
+    return all_args
+
+
+g.arg_list = g.zero_plus_arg_list >> emit_arg_list
 
 def emit_zero_plus_args(args):
     _, test, zero_plus = unpack_n(args, 3)
@@ -645,7 +707,8 @@ if __name__ == "__main__":
         tokens = [convert_token(t) for t in py_tokens]
 
         print("Parsing:")
-        pprint(tokens)
+        t = tokens
+        pprint(t)
 
         result = parse(g.file_input, tokens)
         print("DONE", result)

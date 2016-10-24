@@ -1,1 +1,3 @@
-x = p.y.a[slice()]
+def func(x, y):
+    del x, y
+func(1, y=3)

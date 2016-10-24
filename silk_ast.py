@@ -42,3 +42,5 @@ ClassDefNode = namedtuple('ClassDef', 'name bases keywords body decorators')
 AttributeNode = namedtuple('Attribute', 'value attr')
 SubscriptNode = namedtuple('Subscript', 'value slice')
 CallNode = namedtuple('Call', 'func args keywords')
+
+# Argument = namedtuple('Argument', 'name value')
