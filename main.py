@@ -1,10 +1,11 @@
 from collections import namedtuple
 from tokenize import generate_tokens
 import token
+import tokenize
 from keyword import iskeyword
 
 from silk_ast import *
-from derp import parse, to_text, ter, empty_string, flatten_first, flatten_last, Recurrence, BaseParser
+from derp import parse, to_text, ter, empty_string, Recurrence, BaseParser
 
 
 Token = namedtuple("Token", "first second")
@@ -25,13 +26,13 @@ def convert_token(tok_info):
     elif tok_info.type == token.NUMBER:
         return Token('NUMBER', tok_info.string)
 
-    elif tok_info.type == token.NEWLINE:
+    elif tok_info.type in {token.NEWLINE, tokenize.NL}:
         return Token("NEWLINE", "NEWLINE")
 
     elif tok_info.type == token.INDENT:
         return Token("INDENT", "INDENT")
 
-    elif tok_info.type == token.INDENT:
+    elif tok_info.type == token.DEDENT:
         return Token("DEDENT", "DEDENT")
 
     elif tok_info.type == token.ERRORTOKEN:
@@ -71,6 +72,7 @@ class GrammarFactory:
                     raise ValueError('Recurrent parser already defined')
 
                 recurrence.parser = value
+                recurrence.simple_name = name
             else:
                 raise ValueError('Parser already assigned')
 
@@ -90,28 +92,26 @@ g = GrammarFactory()
 
 
 def emit_program(args):
-    return args
+    lines, _ = args
+    return lines
 
 g.file_input = (g.lines & ter('ENDMARKER')) >> emit_program
 
 def emit_nl(args):
-    print('A',args)
     return args
 
 def emit_line(args):
-    print('L', args)
     return args
 
-g.lines = ~((ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line)
+g.lines = empty_string | (ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line
 
 def emit_func_def(args):
-    _, name, params, _ = flatten_first(args)
-    print("FUNC DEF", name, params)
-    return "<def {}{}>".format(name, params)
+    _, name, params, _, body = unpack_n(args, 5)
+    return FunctionDefNode(name, params, body, ())
 g.func_def = (ter('def') & ter('ID') & g.parameters & ter(':') & g.suite) >> emit_func_def
 
 def emit_params(args):
-    _, params, _ = flatten_first(args)
+    _, params, _ = unpack_n(args, 3)
     return params
 g.parameters = (ter('(') & g.zero_plus_params & ter(')')) >> emit_params
 
@@ -119,20 +119,8 @@ def emit_param_list(args):
     return args
 
 def emit_rest_of_params(args):
-    _, name, _ = flatten_first(args)
+    _, name, _ = unpack_n(args, 3)
     return name
-
-
-def ep(args):
-    return ''.join(unpack_n(args, 3))
-
-def eas(args):
-    return "<={}>".format(args[1])
-def etyp(args):
-    col, tid = args
-    return "<:{}>".format(tid)
-def epars(args):
-    return args
 
 g.rest_of_ids = empty_string | (ter(',') & ter('ID') & g.rest_of_ids) >> emit_rest_of_params
 
@@ -143,15 +131,22 @@ def emit_small_stmts(args):
     return args
 
 g.more_small_stmts = (ter(';') & g.small_stmt & g.more_small_stmts) >> emit_small_stmts
-zero_plus_small_stmts = +g.more_small_stmts
-end_of_stmts = empty_string & ter('NEWLINE') | (ter(';') & ter('NEWLINE'))
+g.zero_plus_small_stmts = ~g.more_small_stmts
+g.end_of_stmts = (empty_string & ter('NEWLINE')) | (ter(';') & ter('NEWLINE'))
 
 
-g.stmt.parser = g.simple_stmt | g.compound_stmt
-g.simple_stmt.parser = g.small_stmt & zero_plus_small_stmts & end_of_stmts
+g.stmt = g.simple_stmt | g.compound_stmt
+
+def emit_simple_stmt(args):
+    small_stmt, additional_stmts, end_of_stmts = unpack_n(args, 3)
+    if additional_stmts == '':
+        return small_stmt,
+    return (small_stmt,) + additional_stmts
+
+g.simple_stmt = (g.small_stmt & g.zero_plus_small_stmts & g.end_of_stmts) >> emit_simple_stmt
 
 
-g.small_stmt.parser = g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt
+g.small_stmt = g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt
 
 g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') | ter('^=') \
             | ter('<<=') | ter('>>=') | ter('**=') | ter('//=')
@@ -159,7 +154,8 @@ g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&
 def emit_aug_assign_stmt(args):
     return args
 def emit_assign_stmt(args):
-    return args
+    targets, _, value = unpack_n(args, 3)
+    return AssignmentNode(targets, value)
 def emit_expr_stmt(args):
     return args
 g.expr_stmt = (g.many_tests & g.augassign & g.many_tests) >> emit_aug_assign_stmt | \
@@ -172,42 +168,70 @@ def emit_del_stmt(args):
 g.del_stmt = (ter('del') & g.star_expr) >> emit_del_stmt
 
 def emit_pass_stmt(args):
-    return args
+    return PassNode()
 g.pass_stmt = ter('pass') >> emit_pass_stmt
 
-g.flow_stmt = g.break_stmt | g.continue_stmt | g.return_stmt | g.raise_stmt
-
 def emit_break_stmt(args):
-    return args
+    return BreakNode()
 g.break_stmt = ter('break') >> emit_break_stmt
 
 def emit_continue_stmt(args):
-    return args
+    return ContinueNode()
+
 g.continue_stmt = ter('continue') >> emit_continue_stmt
 g.return_expr = ~g.many_tests
 
 def emit_from_stmt(args):
-    return args
+    _, from_ = args
+    return from_
 g.raise_from = ~((ter('from') & g.test) >> emit_from_stmt)
 
 def emit_raise_new_exception(args):
-    return args
+    type_, from_ = args
+    return type_, from_
 g.raise_clause = ~((g.test & g.raise_from) >> emit_raise_new_exception)
-g.return_stmt = ter('return') & g.return_expr >> emit_continue_stmt
+
+def emit_return_stmt(args):
+    _, expr = args
+    return ReturnNode(expr)
+g.return_stmt = (ter('return') & g.return_expr) >> emit_return_stmt
 
 def emit_raise_stmt(args):
-    return args
+    _, clause = args
+    if clause == '':
+        return RaiseNode(None, None)
+
+    exc, cause = clause
+    return RaiseNode(exc, cause)
 g.raise_stmt = (ter('raise') & g.raise_clause) >> emit_raise_stmt
 
+g.flow_stmt = g.break_stmt | g.continue_stmt | g.return_stmt | g.raise_stmt
+
 def emit_rest_of_ids(args):
-    return args
+    _, id_, remainder = unpack_n(args, 3)
+    if remainder == '':
+        return id_,
+    return (id_,) + remainder
 g.zero_plus_ids = ~((ter(',') & ter('ID') & g.zero_plus_ids) >> emit_rest_of_ids)
+
 def emit_global_stmt(args):
-    return args
+    _, id1, rest_ids = unpack_n(args, 3)
+    if rest_ids == '':
+        ids = id1,
+    else:
+        ids = (id1,) + rest_ids
+    return GlobalNode(ids)
 g.global_stmt = (ter('global') & ter('ID') & g.zero_plus_ids) >> emit_global_stmt
+
 def emit_nonlocal_stmt(args):
-    return args
+    _, id1, rest_ids = unpack_n(args, 3)
+    if rest_ids == '':
+        ids = id1,
+    else:
+        ids = (id1,) + rest_ids
+    return NonlocalNode(ids)
 g.nonlocal_stmt = (ter('nonlocal') & ter('ID') & g.zero_plus_ids) >> emit_nonlocal_stmt
+
 def emit_rest_of_tests(args):
     return args
 zero_plus_tests = ~((ter(',') & g.test) >> emit_rest_of_tests)
@@ -224,27 +248,33 @@ def emit_else_clause(args):
     return args
 
 g.else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_else_clause)
-g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & (g.zero_or_more_elifs & g.else_clause))
+
+def emit_if_stmt(args):
+    _, test, _, body, elifs = unpack_n(args, 5)
+    return IfExpNode(test, body, elifs)
+g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & (g.zero_or_more_elifs & g.else_clause)) >> emit_if_stmt
 
 def emit_while_else_clause(args):
-    return args
+    _, _, body = unpack_n(args, 3)
+    return body
 g.while_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_while_else_clause)
 
 def emit_while_stmt(args):
-    return args
+    _, test, _, body, or_else = unpack_n(args, 5)
+    return WhileNode(test, body, or_else)
 g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & g.while_else_clause) >> emit_while_stmt
 
 def emit_for_else_clause(args):
     return args
 g.for_else_clause = ~((ter('else') & ter(':') & g.suite) >> emit_for_else_clause)
 def emit_for_stmt(args):
-    return args
+    _, target, _, iterator, _, body, or_else = unpack_n(args, 7)
+    return ForNode(target, iterator, body, or_else)
 g.for_stmt = (ter('for') & ter('ID') & ter('in') & g.test & ter(':') & g.suite & g.for_else_clause) >> emit_for_stmt
 
 def emit_finally_try_block(args):
     return args
 g.finally_try_block = (ter('finally') & ter(':') & g.suite) >> emit_finally_try_block
-
 
 def emit_except_vars(args):
     return args
@@ -283,19 +313,25 @@ def emit_try_stmt(args):
 g.try_stmt = (ter('try') & ter(':') & g.suite & g.exception_handlers) >> emit_try_stmt
 
 def emit_stmts(args):
-    return args
+    stmt, zero_plus = args
+    if zero_plus == '':
+        return stmt,
+
+    return (stmt,) + zero_plus
 
 g.one_plus_stmts = (g.stmt & g.zero_plus_stmts) >> emit_stmts
 g.zero_plus_stmts = ~g.one_plus_stmts
 
 def emit_suite(args):
-    return args
+    _, _, stmts, _ = unpack_n(args, 4)
+    return stmts
 g.suite = g.simple_stmt | ((ter('NEWLINE') & ter('INDENT') & g.one_plus_stmts & ter('DEDENT')) >> emit_suite)
 
 g.comparison_operator = ter('<') | ter('>') | ter('==') | ter('>=') | ter('<=') | ter('<>') | ter('!=')
 
 def emit_comparison_operator(args):
-    return args
+    op, = args
+    return op
 def emit_not_in(args):
     return args
 def emit_is_not(args):
@@ -305,27 +341,37 @@ g.comparison_type = g.comparison_operator >> emit_comparison_operator | ter('in'
 
 def emit_comparison(args):
     star_expr, any_comps = args
-    print("COMP", star_expr, [any_comps])
-    return args
+    if any_comps == '':
+        return star_expr
+
+    ops, exprs = any_comps
+    return ComparisonNode(star_expr, ops,  exprs)
 g.comparison = (g.star_expr & g.zero_plus_comps) >> emit_comparison
 
 def emit_zero_plus_comps(args):
-    return args
+    op, expr, remainder = unpack_n(args, 3)
+    if remainder == '':
+        return (op,),(expr,)
+
+    ops, exprs = remainder
+    return (op,)+ops, (expr,) + exprs
 g.zero_plus_comps = ~((g.comparison_type & g.star_expr & g.zero_plus_comps) >> emit_zero_plus_comps)
 
 def emit_lambda_def(args):
-    return args
+    _, arguments, _, body = unpack_n(args, 4)
+    return LambdaDefNode(arguments, body)
 g.lambdef = (ter('lambda') & g.zero_plus_params & ter(':') & g.test) >> emit_lambda_def
 
 def emit_not_test(args):
     _, not_test = args
-    print("NOT", not_test)
-    return args
+    return NotNode(not_test)
 g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
 g.zero_plus_nots = ~((ter('and') & g.not_test & g.zero_plus_nots))
 
 def emit_and_test(args):
     not_test, any_nots = args
+    if any_nots == '':
+        return not_test
     print("AND", not_test, [any_nots])
     return args
 g.and_test = (g.not_test & g.zero_plus_nots) >> emit_and_test
@@ -336,6 +382,8 @@ g.zero_plus_ors = ~((ter('or') & g.and_test & g.zero_plus_ors) >> emit_zero_plus
 
 def emit_or_test(args):
     and_test, any_ors = args
+    if any_ors == '':
+        return and_test
     print("OR", and_test, [any_ors])
     return args
 g.or_test = (g.and_test & g.zero_plus_ors) >> emit_or_test
@@ -348,6 +396,8 @@ g.test = g.or_test | ((g.or_test & ter('if') & g.or_test & ter('else') & g.test)
 
 def emit_expr(args):
     xor, any_xors = args
+    if any_xors == '':
+        return xor
     print("EXPR", xor, [any_xors])
     return args
 g.expr = (g.xor_expr & g.zero_plus_xors) >> emit_expr
@@ -355,11 +405,13 @@ g.expr = (g.xor_expr & g.zero_plus_xors) >> emit_expr
 def emit_star_expr(args):
     opt_star, expr = args
     print("STAR_EXPR", opt_star, expr)
-    return args
+    return expr
 g.star_expr = (~ter('*') & g.expr) >> emit_star_expr
 
 def emit_xor_expr(args):
     and_exp, any_ands = args
+    if any_ands == '':
+        return and_exp
     print("XOR_EXP", and_exp, [any_ands])
     return args
 g.xor_expr = (g.and_expr & g.zero_plus_ands) >> emit_xor_expr
@@ -370,6 +422,8 @@ g.zero_plus_xors = ~((ter('|') & g.xor_expr & g.zero_plus_xors) >> emit_zero_plu
 
 def emit_and_expr(args):
     shift_exp, any_shifts = args
+    if any_shifts == '':
+        return shift_exp
     print("AND_EXP", shift_exp, [any_shifts])
     return args
 g.and_expr = (g.shift_expr & g.zero_plus_shifts) >> emit_and_expr
@@ -380,6 +434,8 @@ g.zero_plus_ands = ~((ter('^') & g.and_expr & g.zero_plus_ands) >> emiz_zero_plu
 
 def emit_shift_expr(args):
     arith, any_ariths = args
+    if any_ariths == '':
+        return arith
     print("shift_expr", arith, [any_ariths])
     return args
 g.shift_expr = (g.arith_expr & g.zero_plus_arith_exprs) >> emit_shift_expr
@@ -390,6 +446,8 @@ g.zero_plus_shifts = ~((ter('&') & g.shift_expr & g.zero_plus_shifts) >> emit_ze
 
 def emit_arith_expr(args):
     term, any_adds = args
+    if any_adds == '':
+        return term
     print("ARITH", term, [any_adds])
     return args
 g.arith_expr = (g.term & g.zero_plus_adds) >> emit_arith_expr
@@ -404,6 +462,8 @@ g.zero_plus_adds = ~(((ter('+') | ter('-')) & g.term & g.zero_plus_adds) >> emit
 
 def emit_term(args):
     factor, any_mults = args
+    if any_mults == '':
+        return factor
     print("TERM", factor, [any_mults])
     return args
 g.term = (g.factor & g.zero_plus_mults) >> emit_term
@@ -426,69 +486,99 @@ def emit_exponent(args):
     return fact
 g.exponent = ~((ter('*') & g.factor) >> emit_exponent)
 
-def emit_indexed(args):
-    return args
-g.indexed = (g.atom & g.zero_plus_trailers) >> emit_indexed
+def emit_atom_expr(args):
+    atom, trailers = args
+    if trailers == '':
+        return atom
+
+    print(trailers, "TRAIL")
+    root = atom
+    for cls, args in trailers:
+        root = cls(root, *args)
+    return root
+g.atom_expr = (g.atom & g.zero_plus_trailers) >> emit_atom_expr
 
 def emit_power(args):
-    indexed, exponnet = args
-    print("POWER", indexed, exponnet)
+    indexed, exponent = args
+    if exponent == '':
+        return indexed
+    print("POWER", indexed, exponent)
     return args
-g.power = (g.indexed & g.exponent) >> emit_power
+g.power = (g.atom_expr & g.exponent) >> emit_power
 
 # Atom
 def emit_id(args):
     return args
 def emit_string(args):
-    return ''.join(flatten_last(args))
+    lit, following = args
+    if following == '':
+        return StringNode(lit)
+    return StringNode(lit + following.value)
+
 def emit_dots(args):
     return args
-g.atom = (g.tuple | g.list | g.dict | ter('ID') >> emit_id | ter('NUMBER') | g.string >> emit_string |
-            ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
+g.atom = (g.tuple | g.list | g.dict_or_set | ter('ID') >> emit_id | ter('NUMBER') | g.string |
+          ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
 
 # Tuple
 def emit_tuple(args):
-    _, value, _ = flatten_first(args)
-    return value
+    _, values, _ = unpack_n(args, 3)
+    return values
 g.tuple = (ter('(') & ~g.test_or_tests & ter(')')) >> emit_tuple
 
 
 #List
 def emit_list(args):
-    return args
+    _, values, _ = unpack_n(args, 3)
+    return ListNode(values)
 g.list = (ter('[') & ~g.many_tests & ter(']')) >> emit_list
 
 from derp import unpack_n
 
 # Dict
-def emit_dict(args):
+def emit_dict_or_set(args):
     _, dict_or_set_maker_opt, _ = unpack_n(args, 3)
     return dict_or_set_maker_opt
-g.dict = (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict
+g.dict_or_set = (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict_or_set
 
 
 # String
 g.string = (ter('LIT') & g.zero_plus_strs) >> emit_string
 g.zero_plus_strs = ~(g.string & g.zero_plus_strs)
 
-def emit_trailer_tuple(args):
-    return args
+def emit_call(args):
+    _, args, _  = unpack_n(args, 3)
+    return CallNode, (args, None) # TODO KWARGS...
 def emit_subscript(args):
-    return args
-def emit_method_call(args):
-    return args
-g.method_call = ter('.') & ter('ID')
+    _, slice_, _ = unpack_n(args, 3)
+    return SubscriptNode, (slice_,)
+def emit_attribute(args):
+    _, name = args
+    return AttributeNode, (name,)
+g.attribute = ter('.') & ter('ID')
 g.subscript = ter('[') & g.test_or_tests & ter(']')
-g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_trailer_tuple | g.subscript >> emit_subscript | g.method_call >> emit_method_call
+g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_call | g.subscript >> emit_subscript | g.attribute >> emit_attribute
 
 def emit_zero_plus_trailers(args):
-    return args
+    trailer, remainder = args
+    if remainder == '':
+        return trailer,
+    return (trailer,) + remainder
 g.zero_plus_trailers = ~((g.trailer & g.zero_plus_trailers) >> emit_zero_plus_trailers)
+
 def emit_many_tests(args):
-    return args
+    test, test_tuple, _ = unpack_n(args, 3)
+    if test_tuple == '':
+        return test,
+    return (test,) + test_tuple
 g.many_tests = (g.test & g.test_tuple & ~ter(',')) >> emit_many_tests
+
 def emit_test_or_tests(args):
-    return args
+    test, following, _ = unpack_n(args, 3)
+    if following == '':
+        return test,
+
+    return TupleNode((test,) + following)
 g.test_or_tests = (g.test & g.zero_plus_args & ~ter(',')) >> emit_test_or_tests
 
 g.dict_or_set_maker = g.dict_maker | g.set_maker
@@ -498,19 +588,26 @@ def emit_dict_maker(args):
     if rest_of_dict != '':
         keys = rest_of_dict.keys + key,
         vals = rest_of_dict.vals + val,
+
     else:
         keys = key,
         vals = val,
-
     return DictNode(keys, vals)
 g.dict_maker = (g.test & ter(':') & g.test & g.test_tuple_prime & ~ter(',')) >> emit_dict_maker
 
 def emit_set_maker(args):
-    return args
+    test, test_tuple, _ = unpack_n(args, 3)
+    if test_tuple == '':
+        return SetNode((test,))
+    return SetNode((test,) + test_tuple)
 g.set_maker = (g.test & g.test_tuple & ~ter(',')) >> emit_set_maker
 
 def emit_test_tuple(args):
-    return args
+    _, test, test_tuple = unpack_n(args, 3)
+    if test_tuple == '':
+        return test,
+    return (test,) + test_tuple
+
 g.test_tuple = ~((ter(',') & g.test & g.test_tuple) >> emit_test_tuple)
 
 def emit_test_tuple_prime(args):
@@ -523,7 +620,7 @@ def emit_test_tuple_prime(args):
         keys = key,
         vals = val,
 
-    return args#DictNode(keys, vals)
+    return DictNode(keys, vals)
 
     return ((test1, test2),) + rest_of_tests#TODO
 g.test_tuple_prime = ~((ter(',') & g.test & ter(':') & g.test & g.test_tuple_prime) >> emit_test_tuple_prime)
@@ -533,17 +630,22 @@ def emit_arg_list(args):
 g.arg_list = (g.test & g.zero_plus_args & ~ter(',')) >> emit_arg_list
 
 def emit_zero_plus_args(args):
-    return args
+    _, test, zero_plus = unpack_n(args, 3)
+    if zero_plus == '':
+        return test,
+    return (test,) + zero_plus
 g.zero_plus_args = ~((ter(',') & g.test & g.zero_plus_args) >> emit_zero_plus_args)
 
 g.validate()
-
+from pprint import pprint
 
 if __name__ == "__main__":
     with open("test_file.txt", "r") as f:
         py_tokens = generate_tokens(f.readline)
         tokens = [convert_token(t) for t in py_tokens]
-        # print(tokens))
-        print(parse(g.dict, tokens[:-1]))
-        # print(tokens[2:7])
-        print("DONE")
+
+        print("Parsing:")
+        pprint(tokens)
+
+        result = parse(g.file_input, tokens)
+        print("DONE", result)
