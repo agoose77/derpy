@@ -103,8 +103,7 @@ def overwritable_property(fget):
 
 def with_fields(*fields):
     def decorator(cls):
-        cls_dict = {}
-        cls_dict['__slots__'] = tuple(fields)
+        cls_dict = {'_fields': tuple(fields), '__slots__': tuple(fields)}
 
         assert all(f.isidentifier() for f in fields)
         if fields:

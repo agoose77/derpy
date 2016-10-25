@@ -1,5 +1,8 @@
 """Parsing with derivatives, in Python"""
 
+__all__ = ('Token', 'Alternate', 'Concatenate', 'empty_string', 'empty', 'Recurrence', 'Reduce', 'Ter', 'ter',
+           'one_plus', 'greedy', 'optional', 'parse', 'compact', 'to_text')
+
 from itertools import product
 from abc import ABC, abstractmethod
 
@@ -8,7 +11,8 @@ from .utilities import to_text_helper, memoized_property, memoized, TextContext,
 
 @with_fields('first', 'second')
 class Token:
-    pass
+    def __repr__(self):
+        return "<Token: {} {}>".format(repr(self.first), repr(self.second))
 
 
 class InfixMixin:
