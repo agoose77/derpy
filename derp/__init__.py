@@ -19,7 +19,7 @@ class InfixMixin:
 
     _concat = None
     _alt = None
-    _rep = None
+    _greedy = None
     _optional = None
     _reduce = None
 
@@ -30,7 +30,7 @@ class InfixMixin:
         return self._alt(self, other)
 
     def __pos__(self):
-        return self._rep(self)
+        return self._greedy(self)
 
     def __invert__(self):
         return self._optional(self)
@@ -40,6 +40,7 @@ class InfixMixin:
 
 
 class BaseParser(InfixMixin, ABC):
+
     @overwritable_property
     def simple_name(self):
         return self.__class__.__name__
@@ -355,9 +356,26 @@ class Ter(BaseParser):
         return "Ter({!r})".format(self.string)
 
 
-def repeat(parser):
+def one_plus(parser):
+    def red_one_plus(args):
+        first, remainder = args
+        if remainder == '':
+            return first,
+        return (first,) + remainder
+
+    return Reduce(Concatenate(parser, greedy(parser)), red_one_plus)
+
+
+def greedy(parser):
     r = Recurrence()
-    r.parser = Alternate(empty_string, Concatenate(parser, r))  # r = ~(parser & r)
+
+    def red_repeat(args):
+        first, remainder = args
+        if remainder == '':
+            return first,
+        return (first,) + remainder
+
+    r.parser = Alternate(empty_string, Reduce(Concatenate(parser, r), red_repeat))  # r = ~(parser & r)
     return r
 
 
@@ -372,7 +390,7 @@ def ter(word):
 # Define Infix operations
 InfixMixin._concat = Concatenate
 InfixMixin._alt = Alternate
-InfixMixin._rep = staticmethod(repeat)
+InfixMixin._greedy = staticmethod(greedy)
 InfixMixin._reduce = Reduce
 InfixMixin._optional = staticmethod(optional)
 
