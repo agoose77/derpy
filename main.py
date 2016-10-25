@@ -90,20 +90,9 @@ def w(f):
 
 g = GrammarFactory()
 
-
-def emit_program(args):
-    lines, _ = args
-    return lines
-
-g.file_input = (g.lines & ter('ENDMARKER')) >> emit_program
-
-def emit_nl(args):
-    return args
-
-def emit_line(args):
-    return args
-
-g.lines = empty_string | (ter('NEWLINE') & g.lines) >> emit_nl | (g.stmt & g.lines) >> emit_line
+g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
+g.eval_input = g.test_list & +ter('NEWLINE') & ter('ENDMARKER')
+g.file_input = (+(ter('NEWLINE') | g.stmt) & ter('ENDMARKER'))
 
 def emit_func_def(args):
     _, name, params, _, body = unpack_n(args, 5)
@@ -474,30 +463,43 @@ def emit_zero_plus_adds(args):
 g.zero_plus_adds = ~(((ter('+') | ter('-')) & g.term & g.zero_plus_adds) >> emit_zero_plus_adds)
 
 def emit_term(args):
-    factor, any_mults = args
-    if any_mults == '':
+    factor, any_ops = args
+    if any_ops == '':
         return factor
-    print("TERM", factor, [any_mults])
-    return args
-g.term = (g.factor & g.zero_plus_mults) >> emit_term
+
+    op_to_enum = {'+': BinOp.add, '-': BinOp.sub, '*': BinOp.mult, '/': BinOp.div}
+
+    root = factor
+    for operator, operand in any_ops:
+        op_enum = op_to_enum[operator]
+        root = BinOpNode(root, op_enum, operand)
+    return root
+
+
+g.term = (g.factor & g.zero_plus_ops) >> emit_term
 
 g.operator = ter('*') | ter('/') | ter('%') | ter('//')
 
-def emit_zero_plus_mults(args):
-    return args
-g.zero_plus_mults = ~((g.operator & g.factor & g.zero_plus_mults) >> emit_zero_plus_mults)
 
-g.operator_choice = ter('+') | ter('-') | ter('~')
-def emit_factor(args):
-    choice, factor = args
-    print("FACTOPR", choice,factor)
-    return args
-g.factor = g.power | ((g.operator_choice & g.factor) >> emit_factor)
+def emit_zero_plus_ops(args):
+    operator, operand, rest_of_ops = unpack_n(args, 3)
+    if rest_of_ops == '':
+        return (operator, operand),
+    return ((operator, operand),) + rest_of_ops
 
-def emit_exponent(args):
-    _, fact = args
-    return fact
-g.exponent = ~((ter('*') & g.factor) >> emit_exponent)
+
+g.zero_plus_ops = ~((g.operator & g.factor & g.zero_plus_ops) >> emit_zero_plus_ops)
+
+g.unary_operator = ter('+') | ter('-') | ter('~')
+
+
+def emit_unary_factor(args):
+    unary_op, factor = args
+    unary_to_enum = {'+': UnaryOp.pos, '-': UnaryOp.neg, '~': UnaryOp}
+    return UnaryOpNode(unary_to_enum[unary_op], factor)
+
+
+g.factor = (g.unary_operator & g.factor) >> emit_unary_factor | g.power
 
 def emit_atom_expr(args):
     atom, trailers = args
@@ -514,9 +516,12 @@ def emit_power(args):
     indexed, exponent = args
     if exponent == '':
         return indexed
+
     print("POWER", indexed, exponent)
     return args
-g.power = (g.atom_expr & g.exponent) >> emit_power
+
+
+g.power = (g.atom_expr & ~(ter('**') & g.factor)) >> emit_power
 
 # Atom
 def emit_id(args):
@@ -528,7 +533,7 @@ def emit_string(args):
     return StringNode(lit + following.value)
 
 def emit_dots(args):
-    return args
+    return EllipsisNode()
 g.atom = (g.tuple | g.list | g.dict_or_set | ter('ID') >> emit_id | ter('NUMBER') | g.string |
           ter('...') >> emit_dots | ter('None') | ter('True') | ter('False'))
 
@@ -566,8 +571,29 @@ def emit_attribute(args):
     _, name = args
     return AttributeNode, (name,)
 g.attribute = ter('.') & ter('ID')
-g.subscript = ter('[') & g.test_or_tests & ter(']')
+g.subscript = ter('[') & g.subscript_list & ter(']')
 g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_call | g.subscript >> emit_subscript | g.attribute >> emit_attribute
+
+
+def emit_slice(args):
+    first, _, second, other = unpack_n(args, 4)
+    if first == '':
+        first = None
+    if second == '':
+        second = None
+
+    if other == '':
+        third = None
+    else:
+        _, third = other
+        if third == '':
+            third = None
+
+    print("SLICE", first, second, third)
+    return first, second, third
+
+
+g.subscript_list = g.test | (~g.test & ter(':') & ~g.test & ~(ter(':') & ~g.test)) >> emit_slice
 
 def emit_zero_plus_trailers(args):
     trailer, remainder = args
@@ -631,30 +657,26 @@ def emit_test_tuple_prime(args):
         vals = val,
 
     return DictNode(keys, vals)
-
-    return ((test1, test2),) + rest_of_tests#TODO
 g.test_tuple_prime = ~((ter(',') & g.test & ter(':') & g.test & g.test_tuple_prime) >> emit_test_tuple_prime)
-
-Arg = namedtuple('Arg', 'name value unpack')
 
 
 def emit_arg(name):
-    return Arg(name, None, None)
+    return ArgNode(name, None, ArgUnpackTypes.none)
 
 
 def emit_kwarg(args):
     name, _, value = unpack_n(args, 3)
-    return Arg(name, value, None)
+    return ArgNode(name, value, ArgUnpackTypes.none)
 
 
 def emit_unpack_kwarg(args):
     _, name = args
-    return Arg(name, None, 'kwargs')
+    return ArgNode(name, None, ArgUnpackTypes.kwargs)
 
 
 def emit_unpack_arg(args):
     _, name = args
-    return Arg(name, None, 'args')
+    return ArgNode(name, None, ArgUnpackTypes.args)
 
 
 g.argument = g.test >> emit_arg | (g.test & ter('=') & g.test) >> emit_kwarg | (ter(
@@ -711,4 +733,4 @@ if __name__ == "__main__":
         pprint(t)
 
         result = parse(g.file_input, tokens)
-        print("DONE", result)
+        pprint(result)

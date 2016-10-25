@@ -16,7 +16,10 @@ def fields(*fields):
     return decorator
 
 from collections import namedtuple
-record = namedtuple
+from enum import Enum
+
+ArgUnpackTypes = Enum('ArgUnpackTypes', 'args kwargs none')
+SliceNode = namedtuple('Subscript', 'first second third')
 
 DictNode = namedtuple('Dict', 'keys values')
 ListNode = namedtuple('List', 'values')
@@ -26,6 +29,7 @@ StringNode = namedtuple('String', 'value')
 AssignmentNode = namedtuple('Assignment', 'targets value')
 FunctionDefNode = namedtuple('FunctionDef', 'name args body decorators')
 PassNode = namedtuple('Pass', '')
+EllipsisNode = namedtuple('Ellipsis', '')
 NotNode = namedtuple('Not', 'expression')
 ContinueNode = namedtuple('Continue', '')
 BreakNode = namedtuple('BreakNode', '')
@@ -42,5 +46,10 @@ ClassDefNode = namedtuple('ClassDef', 'name bases keywords body decorators')
 AttributeNode = namedtuple('Attribute', 'value attr')
 SubscriptNode = namedtuple('Subscript', 'value slice')
 CallNode = namedtuple('Call', 'func args keywords')
+ArgNode = namedtuple('Arg', 'name value unpack')
+BinOpNode = namedtuple('BinOp', 'left op right')
+UnaryOpNode = namedtuple('UnaryOp', 'op operand')
 
+UnaryOp = Enum('UnaryOp', 'pos inv neg')
+BinOp = Enum('BinOp', 'add div sub mod pow mult')
 # Argument = namedtuple('Argument', 'name value')

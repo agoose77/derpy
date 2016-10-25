@@ -440,7 +440,7 @@ class Ter(BaseParser):
 
 def repeat(parser):
     r = Recurrence()
-    r.parser = Alternate(empty_string, Concatenate(r, parser))
+    r.parser = Alternate(empty_string, Concatenate(parser, r))  # r = ~(parser & r)
     return r
 
 
