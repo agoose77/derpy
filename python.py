@@ -7,6 +7,7 @@ from io import StringIO
 
 from derp import parse, Token, ter, Recurrence, BaseParser, one_plus
 from derp.utilities import unpack_n
+import ast
 
 
 def generate_parser_tokens(filename):
@@ -55,6 +56,7 @@ def generate_parser_tokens(filename):
 
 
 class GrammarFactory:
+
     def __init__(self):
         object.__setattr__(self, '_recurrences', {})
 
@@ -64,10 +66,9 @@ class GrammarFactory:
                 raise ValueError("{} parser is not defined".format(name))
 
     def __getattr__(self, name):
-        result = Recurrence()
-        self._recurrences[name] = result
-        object.__setattr__(self, name, result)  # To stop this being created again
-        return result
+        self._recurrences[name] = recurrence = Recurrence()
+        object.__setattr__(self, name, recurrence)  # To stop this being created again
+        return recurrence
 
     def __setattr__(self, name, value):
         assert isinstance(value, BaseParser), (name, value)
@@ -81,6 +82,7 @@ class GrammarFactory:
 
                 recurrence.parser = value
                 recurrence.simple_name = name
+
             else:
                 raise ValueError('Parser already assigned')
 
@@ -88,6 +90,32 @@ class GrammarFactory:
         else:
             object.__setattr__(self, name, value)
 
+
+def emit_func_def(args):
+    _, name, params, ret_type, _, body = unpack_n(args, 6)
+    decorators = ()
+    if ret_type == '':
+        returns = None
+    else:
+        _, returns = ret_type
+
+    return ast.FunctionDef(name, params, body, decorators, returns)
+
+def emit_params(args):
+    _, typed_args, _ = unpack_n(args, 3)
+    return typed_args
+
+def emit_del(args):
+    return ast.Del()
+
+def emit_break(args):
+    return ast.Break()
+
+def emit_pass(args):
+    return ast.Pass()
+
+def emit_continue(args):
+    return ast.Continue()
 
 g = GrammarFactory()
 
@@ -99,19 +127,17 @@ g.decorator = ter('@') & g.dotted_name & ~(ter('(') & ~g.arg_list & ter(')')) & 
 g.decorators = one_plus(g.decorator)
 g.decorated = g.decorators & (g.class_def | g.func_def)  # Ignore async
 
-g.func_def = ter('def') & ter('ID') & g.parameters & ~(ter('->') & g.test) & ter(':') & g.suite
+g.func_def = (ter('def') & ter('ID') & g.parameters & ~(ter('->') & g.test) & ter(':') & g.suite) >> emit_func_def
 
 
 def generate_args_list(tfpdef):
     tfpdef_opt_ass = tfpdef & ~(ter('=') & g.test)
     tfpdef_kwargs = ter('**') & tfpdef
-    return (tfpdef_opt_ass & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') &
-                                                              ~(ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(
-                                                              ter(',') & tfpdef_kwargs) | tfpdef_kwargs))
-            | (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) | tfpdef_kwargs)
+    return (tfpdef_opt_ass & +(ter(',') & tfpdef_opt_ass) &
+            ~(ter(',') & ~(ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~( ter(',') & tfpdef_kwargs) | tfpdef_kwargs)) |
+            (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) | tfpdef_kwargs)
 
-
-g.parameters = ter('(') & g.typed_args_list & ter(')')
+g.parameters = (ter('(') & g.typed_args_list & ter(')')) >> emit_params
 
 g.typed_args_list = generate_args_list(g.tfpdef)
 g.tfpdef = ter('ID') & ~(ter(':') & g.test)
@@ -121,18 +147,16 @@ g.vfpdef = ter('ID')
 
 g.stmt = g.simple_stmt | g.compound_stmt
 g.simple_stmt = g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')
-g.small_stmt = (
-g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
-g.expr_stmt = g.test_list_star_expr & (
-g.augassign & (g.yield_expr | g.test_list) | +(ter('=') & (g.yield_expr | g.test_list_star_expr)))
+g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
+g.expr_stmt = g.test_list_star_expr & (g.augassign & (g.yield_expr | g.test_list) | +(ter('=') & (g.yield_expr | g.test_list_star_expr)))
 g.test_list_star_expr = (g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(',')
 g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') | ter('^=') \
               | ter('<<=') | ter('>>=') | ter('**=') | ter('//=') | ter('@=')
-g.del_stmt = ter('del') & g.expr_list
-g.pass_stmt = ter('pass')
+g.del_stmt = ter('del') & g.expr_list >> emit_del
+g.pass_stmt = ter('pass') >> emit_pass
 g.flow_stmt = g.break_stmt | g.continue_stmt | g.return_stmt | g.raise_stmt | g.yield_stmt
-g.break_stmt = ter('break')
-g.continue_stmt = ter('continue')
+g.break_stmt = ter('break') >> emit_break
+g.continue_stmt = ter('continue') >> emit_continue
 g.return_stmt = ter('return') & ~g.test_list
 g.yield_stmt = g.yield_expr
 g.raise_stmt = ter('raise') & ~(g.test & ~(ter('from') & g.test))
@@ -223,7 +247,7 @@ g.ensure_parsers_defined()
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Python parser')
-    parser.add_argument('filepath')
+    parser.add_argument('-filepath', default="sample.py")
     args = parser.parse_args()
 
     tokens = list(generate_parser_tokens(args.filepath))
