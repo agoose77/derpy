@@ -4,7 +4,9 @@ A Python implementation of parsing with derivatives. Provides a concise infix no
 See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.html for a Java implementation, or http://matt.might.net/articles/parsing-with-derivatives/ for the original author's publication.
 
 ## Example parser
-![Example Parser Equation S = epsilon OR 1 AND S](https://latex.codecogs.com/png.latex?\dpi{150}&space;\huge&space;S&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;S)
+```latex 
+S = \epsilon | 1 \cdot  S
+```
 This parser would be represented as 
 ```python
 S = Recurrence()
