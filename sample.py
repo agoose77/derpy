@@ -1,2 +1,11 @@
 def func(x, y) -> int:
-    pass
+    assert x == 1, 'heelp'
+    global z
+
+    z = 1
+
+    if x < y:
+        print("YAY")
+
+    while x < 10:
+        continue

@@ -117,6 +117,80 @@ def emit_pass(args):
 def emit_continue(args):
     return ast.Continue()
 
+def emit_import_from(args):
+    pass
+
+def emit_import(args):
+    _, names = args
+    return ast.Import(names)
+
+def emit_nonlocal(args):
+    _, name, names = unpack_n(args, 3)
+    if names != '':
+        other_names = tuple(n[1] for n in names)
+    else:
+        other_names = ()
+    return ast.Nonlocal((name,) + other_names)
+
+def emit_global(args):
+    _, name, names = unpack_n(args, 3)
+    if names != '':
+        other_names = tuple(n[1] for n in names)
+    else:
+        other_names = ()
+    return ast.Global((name,) + other_names)
+
+def emit_assert(args):
+    _, test, msg = unpack_n(args, 3)
+    if msg != '':
+        _, message = msg
+    else:
+        message = None
+    return ast.Assert(test, message)
+
+def emit_lambda_def(args):
+    _, varargs, _, test = unpack_n(args, 4)
+    return ast.LambdaDef(varargs, test)
+
+def emit_return(args):
+    _, test_list = args
+    return ast.Return(test_list)
+
+def emit_if(args):
+    _, condition, _, body, elifs, else_ = unpack_n(args, 6)
+
+    if elifs != '':
+        other_ifs = tuple([ast.If(else_condition, else_body) for _, else_condition, _, else_body in elifs])
+    else:
+        other_ifs = ()
+
+    if else_ != '':
+        _, _, else_stmt = else_
+        other_ifs = other_ifs + (else_stmt,)
+
+    return ast.If(condition, body, other_ifs)
+
+def emit_while(args):
+    _, condition, _, body, else_ = unpack_n(args, 5)
+    if else_ == '':
+        else_stmt = None
+    else:
+        else_stmt = else_
+    return ast.While(condition, body, else_stmt)
+
+def emit_for(args):
+    _, target, _, iterable, _, body, optelse = unpack_n(args, 7)
+    else_ = None if optelse == '' else optelse
+    return ast.If(target, iterable, body, else_)
+
+def emit_with(args):
+    _, with_item, with_items, _, body = unpack_n(args, 5)
+    if with_items == '':
+        all_items = with_item,
+    else:
+        all_items = (with_item,) + with_items
+    return ast.With(all_items, body)
+
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
@@ -157,29 +231,25 @@ g.pass_stmt = ter('pass') >> emit_pass
 g.flow_stmt = g.break_stmt | g.continue_stmt | g.return_stmt | g.raise_stmt | g.yield_stmt
 g.break_stmt = ter('break') >> emit_break
 g.continue_stmt = ter('continue') >> emit_continue
-g.return_stmt = ter('return') & ~g.test_list
+g.return_stmt = (ter('return') & ~g.test_list) >> emit_return
 g.yield_stmt = g.yield_expr
 g.raise_stmt = ter('raise') & ~(g.test & ~(ter('from') & g.test))
 g.import_stmt = g.import_name | g.import_from
-g.import_name = ter('import') & g.dotted_as_names
-g.import_from = (
-ter('from') & ((+(ter('.') | ter('...')) & g.dotted_name) | one_plus(ter('.') | ter('...'))) & ter('import') & (
-ter('*') | (ter('(') & g.import_as_names & ter(')')) | g.import_as_names))
+g.import_name = (ter('import') & g.dotted_as_names) >> emit_import
+g.import_from = (ter('from') & ((+(ter('.') | ter('...')) & g.dotted_name) | one_plus(ter('.') | ter('...'))) & ter('import') & (ter('*') | (ter('(') & g.import_as_names & ter(')')) | g.import_as_names)) >> emit_import_from
 g.import_as_name = ter('ID') & ~(ter('as') & ter('ID'))
 g.import_as_names = g.import_as_name & +(ter(',') & g.import_as_name) & ~ter(',')
 g.dotted_name = ter('ID') & +(ter('.') & ter('ID'))
 g.dotted_as_name = g.dotted_name & ~(ter('as') & ter('ID'))
 g.dotted_as_names = g.dotted_as_name & +(ter(',') & g.dotted_as_name)
-g.global_stmt = ter('global') & ter('ID') & +(ter(',') & ter('ID'))
-g.nonlocal_stmt = ter('nonlocal') & ter('ID') & +(ter(',') & ter('ID'))
-g.assert_stmt = ter('assert') & g.test & ~(ter(',') & g.test)
+g.global_stmt = (ter('global') & ter('ID') & +(ter(',') & ter('ID'))) >> emit_global
+g.nonlocal_stmt = (ter('nonlocal') & ter('ID') & +(ter(',') & ter('ID'))) >> emit_nonlocal
+g.assert_stmt = (ter('assert') & g.test & ~(ter(',') & g.test)) >> emit_assert
 
 g.compound_stmt = g.if_stmt | g.while_stmt | g.for_stmt | g.try_stmt | g.with_stmt | g.func_def | g.class_def | g.decorated
-g.if_stmt = ter('if') & g.test & ter(':') & g.suite & +(ter('elif') & g.test & ter(':') & g.suite) & ~(
-ter('else') & ter(':') & g.suite)
-g.while_stmt = ter('while') & g.test & ter(':') & g.suite & ~(ter('else') & ter(':') & g.suite)
-g.for_stmt = ter('for') & g.expr_list & ter('in') & g.test_list & ter(':') & g.suite & ~(
-ter('else') & ter(':') & g.suite)
+g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & +(ter('elif') & g.test & ter(':') & g.suite) & ~(ter('else') & ter(':') & g.suite)) >> emit_if
+g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & ~(ter('else') & ter(':') & g.suite)) >> emit_while
+g.for_stmt = (ter('for') & g.expr_list & ter('in') & g.test_list & ter(':') & g.suite & ~(ter('else') & ter(':') & g.suite)) >> emit_for
 g.try_stmt = ter('try') & ter(':') & g.suite & \
              ((one_plus(g.except_clause & ter(':') & g.suite) &
                ~(ter('else') & ter(':') & g.suite) &
@@ -187,14 +257,16 @@ g.try_stmt = ter('try') & ter(':') & g.suite & \
               # Just finally no except
               (ter('finally') & ter(':') & g.suite)
               )
-g.with_stmt = ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite
+
+g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite) >> emit_with
 g.with_item = g.test & ~(ter('as') & g.expr)
 g.except_clause = ter('except') & ~(g.test & ~(ter('as') & ter('ID')))
 g.suite = g.simple_stmt | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter('DEDENT'))
 
 g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) | g.lambda_def
 g.test_no_cond = g.or_test | g.lambda_def_no_cond
-g.lambda_def = ter('lambda') & ~g.var_args_list & ter(':') & g.test
+
+g.lambda_def = (ter('lambda') & ~g.var_args_list & ter(':') & g.test) >> emit_lambda_def
 g.lambda_def_no_cond = ter('lambda') & ~g.var_args_list & ter(':') & g.test_no_cond
 g.or_test = g.and_test & +(ter('or') & g.and_test)
 g.and_test = g.not_test & +(ter('and') & g.not_test)
