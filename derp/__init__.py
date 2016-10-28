@@ -1,92 +1,29 @@
-from collections import namedtuple
-from contextlib import contextmanager
+"""Parsing with derivatives, in Python"""
+
+__all__ = ('Token', 'Alternate', 'Concatenate', 'empty_string', 'empty', 'Recurrence', 'Reduce', 'Ter', 'ter',
+           'one_plus', 'greedy', 'optional', 'parse', 'compact', 'to_text')
+
 from itertools import product
 from abc import ABC, abstractmethod
-from functools import wraps
 
-inf = float("+inf")
-
-
-def memo(f):
-    cache = {}
-
-    @wraps(f)
-    def f_memo(*args):
-        try:
-            return cache[args]
-
-        except KeyError:
-            result = cache[args] = f(*args)
-            return result
-
-    return f_memo
+from .utilities import to_text_helper, memoized_property, memoized, TextContext, overwritable_property, with_fields
 
 
-memo_property = lambda f: property(memo(f))
-
-
-def recursive_repr(to_text):
-    @wraps(to_text)
-    def wrapper(self, seen):
-        if self not in seen:
-            seen.add(self)
-            return to_text(self, seen)
-        return "..."
-    return wrapper
-
-
-class Undefined:
-    pass
-
-
-def lazy(f, *args, **kwargs):
-    value = Undefined
-
-    class proxy:
-        def __hash__(self):
-            return id(self)
-
-        def __eq__(self, other):
-            return id(self) == id(other)
-
-        def __getattr__(self, name):
-            nonlocal value
-            if value is Undefined:
-                value = f(*args, **kwargs)
-
-            return getattr(value, name)
-
-    return proxy()
-
-
-def fields(*fields):
-    def decorator(cls):
-        cls_dict = {}
-        cls_dict['__slots__'] = tuple(fields)
-
-        assert all(f.isidentifier() for f in fields)
-        if fields:
-            arg_string = ", ".join(fields)
-            body_definitions = ["self.{0} = {0}".format(f) for f in fields]
-            definition = "def __init__(self, {}):\n\t".format(arg_string) + "\n\t".join(body_definitions)
-            exec(definition, cls_dict)
-
-        cls_name = cls.__name__ + "_record"
-        return type(cls_name, (cls,), cls_dict)
-
-    return decorator
-
-
-@fields('first', 'second')
+@with_fields('first', 'second')
 class Token:
-    pass
+    def __repr__(self):
+        return "<Token: {} {}>".format(repr(self.first), repr(self.second))
 
 
-class Infix:
+class InfixMixin:
+    """Provides infix notation support to parsers.
+
+    As parsers may operate upon their own types, these methods are defined later.
+    """
 
     _concat = None
     _alt = None
-    _rep = None
+    _greedy = None
     _optional = None
     _reduce = None
 
@@ -97,7 +34,7 @@ class Infix:
         return self._alt(self, other)
 
     def __pos__(self):
-        return self._rep(self)
+        return self._greedy(self)
 
     def __invert__(self):
         return self._optional(self)
@@ -106,7 +43,11 @@ class Infix:
         return self._reduce(self, other)
 
 
-class BaseParser(Infix, ABC):
+class BaseParser(InfixMixin, ABC):
+
+    @overwritable_property
+    def simple_name(self):
+        return self.__class__.__name__
 
     def compact(self, seen):
         seen.add(self)
@@ -121,21 +62,22 @@ class BaseParser(Infix, ABC):
         pass
 
     @abstractmethod
-    def to_text(self, seen):
+    def to_text(self, context):
         pass
 
 
 class Delayable(BaseParser):
+    """Delays derivative evaluation to avoid non-terminating recursion"""
 
     _null_set = None
 
-    @fields('parser', 'token')
+    @with_fields('parser', 'token')
     class Lazy(BaseParser):
 
         def compact(self, seen):
             return self.derivative.compact(seen)
 
-        @memo_property
+        @memoized_property
         def derivative(self):
             return self.parser._derive(self.token)
 
@@ -145,7 +87,7 @@ class Delayable(BaseParser):
         def derive_null(self):
             return self.derivative.derive_null()
 
-        @recursive_repr
+        @to_text_helper
         def to_text(self, seen):
             return "Lazy({}, {})".format(self.parser.to_text(seen), self.token)
 
@@ -157,11 +99,11 @@ class Delayable(BaseParser):
     def _derive_null(self):
         pass
 
-    @memo
+    @memoized
     def derive(self, token):
         return self.__class__.Lazy(self, token)
 
-    @memo
+    @memoized
     def derive_null(self):
         if self._null_set is not None:
             return self._null_set
@@ -176,10 +118,8 @@ class Delayable(BaseParser):
                 return self._null_set
 
 
-# Alt-Concat-Rec
-@fields('left', 'right')
+@with_fields('left', 'right')
 class Alternate(Delayable):
-
     def __new__(cls, left, right):
         if left is empty:
             return right
@@ -213,14 +153,13 @@ class Alternate(Delayable):
 
         return deriv_left | deriv_right
 
-    @recursive_repr
+    @to_text_helper
     def to_text(self, seen):
         return "({} | {})".format(self.left.to_text(seen), self.right.to_text(seen))
 
 
-@fields('left', 'right')
+@with_fields('left', 'right')
 class Concatenate(Delayable):
-
     def __new__(cls, left, right):
         if left is empty or right is empty:
             return empty
@@ -238,17 +177,23 @@ class Concatenate(Delayable):
             return empty
 
         if isinstance(self.left, Epsilon) and self.left.size == 1:
-            result = next(iter(self.left.derive_null()))
+            result_set = set(self.left.derive_null())
+            result = result_set.pop()
+            assert not result_set
 
             def reduction(token):
                 return result, token
+
             return Reduce(self.right, reduction)
 
         if isinstance(self.right, Epsilon) and self.right.size == 1:
-            result = next(iter(self.right.derive_null()))
+            result_set = set(self.right.derive_null())
+            result = result_set.pop()
+            assert not result_set
 
             def reduction(token):
                 return token, result
+
             return Reduce(self.left, reduction)
 
         return self
@@ -268,13 +213,14 @@ class Concatenate(Delayable):
 
         return result
 
-    @recursive_repr
+    @to_text_helper
     def to_text(self, seen):
         return "({} & {})".format(self.left.to_text(seen), self.right.to_text(seen))
 
 
-@fields('parser')
-class Delta(Infix):
+@with_fields('parser')
+class Delta(InfixMixin):
+    """Used to keep a record of skipped parse trees"""
 
     def compact(self, seen):
         return Epsilon(self.parser.derive_null())
@@ -289,9 +235,8 @@ class Delta(Infix):
         return "Delta()".format(self.parser)
 
 
-@fields()
+@with_fields()
 class _Empty(BaseParser):
-
     def derive(self, token):
         return empty
 
@@ -300,11 +245,16 @@ class _Empty(BaseParser):
 
     def to_text(self, seen):
         return "Empty()"
+
+
 empty = _Empty()
 
 
-@fields('_trees')
+@with_fields('_trees')
 class Epsilon(BaseParser):
+    @overwritable_property
+    def simple_name(self):
+        return "Epsilon({})".format(self._trees)
 
     @classmethod
     def from_value(cls, value):
@@ -331,6 +281,8 @@ class Epsilon(BaseParser):
 
     def to_text(self, seen):
         return "Eps({!r})".format(self._trees)
+
+
 empty_string = Epsilon.from_value('')
 
 
@@ -346,17 +298,17 @@ class Recurrence(Delayable):
     def _derive_null(self):
         return self.parser.derive_null()
 
-    @recursive_repr
+    @to_text_helper
     def to_text(self, seen):
         return self.parser.to_text(seen)
 
 
-@fields('parser', 'func')
+@with_fields('parser', 'func')
 class Reduce(Delayable):
-
     def compact(self, seen):
         if self not in seen:
             seen.add(self)
+
             self.parser = self.parser.compact(seen)
 
         if self.parser is empty:
@@ -370,6 +322,8 @@ class Reduce(Delayable):
             def combination(token):
                 return outer(inner(token))
 
+            combination.__name__ = "{}({})".format(outer.__name__, inner.__name__)
+
             return self.__class__(sub_reduction.parser, combination)
 
         else:
@@ -380,17 +334,21 @@ class Reduce(Delayable):
 
     def _derive_null(self):
         result = set()
+
         for obj in self.parser.derive_null():
             result.add(self.func(obj))
         return result
 
-    @recursive_repr
+    @to_text_helper
     def to_text(self, seen):
         return "{} >> {}()".format(self.parser.to_text(seen), self.func.__name__)
 
 
-@fields('string')
+@with_fields('string')
 class Ter(BaseParser):
+    @overwritable_property
+    def simple_name(self):
+        return "Ter({})".format(self.string)
 
     def derive(self, token):
         return Epsilon.from_value(token.second) if token.first == self.string else empty
@@ -402,9 +360,26 @@ class Ter(BaseParser):
         return "Ter({!r})".format(self.string)
 
 
-def repeat(parser):
+def one_plus(parser):
+    def red_one_plus(args):
+        first, remainder = args
+        if remainder == '':
+            return first,
+        return (first,) + remainder
+
+    return Reduce(Concatenate(parser, greedy(parser)), red_one_plus)
+
+
+def greedy(parser):
     r = Recurrence()
-    r.parser = Alternate(empty_string, Concatenate(r, parser))
+
+    def red_repeat(args):
+        first, remainder = args
+        if remainder == '':
+            return first,
+        return (first,) + remainder
+
+    r.parser = Alternate(empty_string, Reduce(Concatenate(parser, r), red_repeat))  # r = ~(parser & r)
     return r
 
 
@@ -412,61 +387,23 @@ def optional(parser):
     return Alternate(empty_string, parser)
 
 
-Infix._concat = Concatenate
-Infix._alt = Alternate
-Infix._rep = staticmethod(repeat)
-Infix._reduce = Reduce
-Infix._optional = staticmethod(optional)
-
-
-def unpack_n(seq, n, first=True):
-    terms = []
-
-    for i in range(n - 1):
-        if first:
-            seq, a = seq
-
-        else:
-            a, seq = seq
-
-        terms.append(a)
-    terms.append(seq)
-
-    if first:
-        terms.reverse()
-
-    return terms
-
-
-def flatten_first(packed):
-    a, b = packed
-    if not isinstance(a, tuple):
-        yield a
-    else:
-        yield from flatten_first(a)
-    yield b
-
-
-def flatten_last(packed):
-    if len(packed) == 1:
-        yield packed[0]
-        return
-    a, b = packed
-    yield a
-    if not isinstance(b, tuple):
-        yield b
-    else:
-        yield from flatten_last(b)
-
-
 def ter(word):
     return Ter(word)
+
+
+# Define Infix operations
+InfixMixin._concat = Concatenate
+InfixMixin._alt = Alternate
+InfixMixin._greedy = staticmethod(greedy)
+InfixMixin._reduce = Reduce
+InfixMixin._optional = staticmethod(optional)
 
 
 def parse(parser, tokens):
     for token in tokens:
         parser = compact(parser.derive(token))
-
+        if parser is empty:
+            break
     return parser.derive_null()
 
 
@@ -474,16 +411,6 @@ def compact(parser):
     return parser.compact(set())
 
 
-def to_text(parser):
-    return parser.to_text(set())
-
-
-# examples
-if __name__ == '__main__' and 1:
-    # S = Recurrence()
-    # a = empty_string | (S & ter('1'))
-    # S.parser = a
-    # a = +ter('1')
-    #
-    # print(parse(a, [Token(t, str(i)) for i, t in enumerate(['1', '1', '1'])]))
-    print(to_text(ter(1) | ter(2) | ter(3)))
+def to_text(parser, max_depth=None):
+    context = TextContext(set(), 0, max_depth)
+    return parser.to_text(context)
