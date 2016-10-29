@@ -191,6 +191,116 @@ def emit_with(args):
         all_items = (with_item,) + with_items
     return ast.With(all_items, body)
 
+def emit_try(args):
+    _, _, body, following = unpack_n(args, 4)
+    raise NotImplemented
+
+def emit_raise(args):
+    _, opt_exc = args
+    if opt_exc == '':
+        return ast.Raise(None, None)
+
+    exc, cause = opt_exc
+    if cause == '':
+        return ast.Raise(exc, None)
+    return ast.Raise(exc, cause)
+
+def emit_kwargs_only(kwarg):
+    return ast.Arguments((), None, (), (), kwarg, ())
+
+def emit_tfpdef(args):
+    arg_id, annot = args
+    if annot != '':
+        _, annotation = annot
+    else:
+        annotation = None
+
+    return ast.Arg(arg_id, annotation)
+
+def emit_varargs(args):
+    _, vararg, any_opt_ass, kwarg = unpack_n(args, 4)
+    if vararg == '':
+        vararg = None
+
+    if kwarg == '':
+        kwarg = None
+
+    if any_opt_ass == '':
+        opt_ass = ()
+    else:
+        opt_ass = tuple(v for c, v in any_opt_ass)
+
+    kw_only = []
+    kw_defaults = []
+    for v in opt_ass:
+        arg, ass = v
+        if ass != '':
+            _, value = ass
+
+        else:
+            value = None
+
+        kw_only.append(arg)
+        kw_defaults.append(value)
+
+    return ast.Arguments((), vararg, tuple(kw_only), tuple(kw_defaults), kwarg, ())
+
+def emit_first(args):
+    opt_ass_first, remaining_opt_ass, following = unpack_n(args, 3)
+
+    if remaining_opt_ass == '':
+        args_optional_values = (opt_ass_first,)
+
+    else:
+        args_optional_values = (opt_ass_first,) + tuple(a for _, a in remaining_opt_ass)
+
+    defaults = []
+    args = []
+    assigned = False
+    for arg, ass in args_optional_values:
+        if ass != '':
+            _, value = ass
+            defaults.append(value)
+
+        else:
+
+            if assigned:
+                raise SyntaxError("Non-default arg after default arg")
+
+        args.append(arg)
+
+    kwonlyargs = ()
+    kw_defaults = ()
+    kwarg = None
+    vararg = None
+
+    if following != '':
+        _, remainder = following
+        if remainder != '':
+            first = remainder[0]
+
+            if first == '**':
+                _, kwarg = remainder
+
+            else:
+                args_varargs = emit_varargs(remainder)
+
+                vararg = args_varargs.vararg
+                kwonlyargs = args_varargs.kwonlyargs
+                kw_defaults = args_varargs.kw_defaults
+                kwarg = args_varargs.kwarg
+
+    return ast.Arguments(tuple(args), vararg, kwonlyargs, kw_defaults, kwarg, tuple(defaults))
+
+def emit_simple_stmt(args):
+    first_stmt, remainder, opt_colon, newline = unpack_n(args, 4)
+    if remainder != '':
+        all_stmts = (first_stmt,) + tuple(s for c, s in remainder)
+    else:
+        all_stmts = first_stmt,
+
+    return all_stmts
+
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
@@ -207,20 +317,21 @@ g.func_def = (ter('def') & ter('ID') & g.parameters & ~(ter('->') & g.test) & te
 def generate_args_list(tfpdef):
     tfpdef_opt_ass = tfpdef & ~(ter('=') & g.test)
     tfpdef_kwargs = ter('**') & tfpdef
-    return (tfpdef_opt_ass & +(ter(',') & tfpdef_opt_ass) &
-            ~(ter(',') & ~(ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~( ter(',') & tfpdef_kwargs) | tfpdef_kwargs)) |
-            (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) | tfpdef_kwargs)
+    return ((tfpdef_opt_ass & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & ~((ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) | tfpdef_kwargs))) >> emit_first |
+            (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) >> emit_varargs |
+            tfpdef_kwargs >> emit_kwargs_only)
 
 g.parameters = (ter('(') & g.typed_args_list & ter(')')) >> emit_params
 
 g.typed_args_list = generate_args_list(g.tfpdef)
-g.tfpdef = ter('ID') & ~(ter(':') & g.test)
+g.tfpdef = (ter('ID') & ~(ter(':') & g.test)) >> emit_tfpdef
 
 g.var_args_list = generate_args_list(g.vfpdef)
 g.vfpdef = ter('ID')
 
 g.stmt = g.simple_stmt | g.compound_stmt
-g.simple_stmt = g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')
+
+g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt
 g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
 g.expr_stmt = g.test_list_star_expr & (g.augassign & (g.yield_expr | g.test_list) | +(ter('=') & (g.yield_expr | g.test_list_star_expr)))
 g.test_list_star_expr = (g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(',')
@@ -233,7 +344,8 @@ g.break_stmt = ter('break') >> emit_break
 g.continue_stmt = ter('continue') >> emit_continue
 g.return_stmt = (ter('return') & ~g.test_list) >> emit_return
 g.yield_stmt = g.yield_expr
-g.raise_stmt = ter('raise') & ~(g.test & ~(ter('from') & g.test))
+
+g.raise_stmt = (ter('raise') & ~(g.test & ~(ter('from') & g.test))) >> emit_raise
 g.import_stmt = g.import_name | g.import_from
 g.import_name = (ter('import') & g.dotted_as_names) >> emit_import
 g.import_from = (ter('from') & ((+(ter('.') | ter('...')) & g.dotted_name) | one_plus(ter('.') | ter('...'))) & ter('import') & (ter('*') | (ter('(') & g.import_as_names & ter(')')) | g.import_as_names)) >> emit_import_from
@@ -250,14 +362,13 @@ g.compound_stmt = g.if_stmt | g.while_stmt | g.for_stmt | g.try_stmt | g.with_st
 g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & +(ter('elif') & g.test & ter(':') & g.suite) & ~(ter('else') & ter(':') & g.suite)) >> emit_if
 g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & ~(ter('else') & ter(':') & g.suite)) >> emit_while
 g.for_stmt = (ter('for') & g.expr_list & ter('in') & g.test_list & ter(':') & g.suite & ~(ter('else') & ter(':') & g.suite)) >> emit_for
-g.try_stmt = ter('try') & ter(':') & g.suite & \
+g.try_stmt = (ter('try') & ter(':') & g.suite &
              ((one_plus(g.except_clause & ter(':') & g.suite) &
                ~(ter('else') & ter(':') & g.suite) &
                ~(ter('finally') & ter(':') & g.suite)) |
               # Just finally no except
               (ter('finally') & ter(':') & g.suite)
-              )
-
+              )) >> emit_try
 g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite) >> emit_with
 g.with_item = g.test & ~(ter('as') & g.expr)
 g.except_clause = ter('except') & ~(g.test & ~(ter('as') & ter('ID')))
