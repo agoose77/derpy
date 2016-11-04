@@ -200,18 +200,19 @@ def emit_raise(args):
     if opt_exc == '':
         return ast.Raise(None, None)
 
-    exc, cause = opt_exc
-    if cause == '':
+    exc, opt_cause = opt_exc
+    if opt_cause == '':
         return ast.Raise(exc, None)
-    return ast.Raise(exc, cause)
+    return ast.Raise(exc, opt_cause)
 
 def emit_kwargs_only(kwarg):
     return ast.Arguments((), None, (), (), kwarg, ())
 
 def emit_tfpdef(args):
-    arg_id, annot = args
-    if annot != '':
-        _, annotation = annot
+    arg_id, opt_annotation = args
+    if opt_annotation != '':
+        _, annotation = opt_annotation
+
     else:
         annotation = None
 
@@ -246,17 +247,18 @@ def emit_varargs(args):
     return ast.Arguments((), vararg, tuple(kw_only), tuple(kw_defaults), kwarg, ())
 
 def emit_first(args):
-    opt_ass_first, remaining_opt_ass, following = unpack_n(args, 3)
+    opt_ass_first, remaining_opt_ass, opt_remainder = unpack_n(args, 3)
 
     if remaining_opt_ass == '':
         args_optional_values = (opt_ass_first,)
 
     else:
-        args_optional_values = (opt_ass_first,) + tuple(a for _, a in remaining_opt_ass)
+        _, following_assignments = zip(*remaining_opt_ass)
+        args_optional_values = (opt_ass_first,) + following_assignments
 
     defaults = []
     args = []
-    assigned = False
+
     for arg, ass in args_optional_values:
         if ass != '':
             _, value = ass
@@ -264,18 +266,19 @@ def emit_first(args):
 
         else:
 
-            if assigned:
+            if defaults:
                 raise SyntaxError("Non-default arg after default arg")
 
         args.append(arg)
 
     kwonlyargs = ()
     kw_defaults = ()
+
     kwarg = None
     vararg = None
 
-    if following != '':
-        _, remainder = following
+    if opt_remainder != '':
+        _, remainder = opt_remainder
         if remainder != '':
             first = remainder[0]
 
@@ -297,15 +300,223 @@ def emit_simple_stmt(args):
     if remainder != '':
         all_stmts = (first_stmt,) + tuple(s for c, s in remainder)
     else:
-        all_stmts = first_stmt,
+        all_stmts = first_stmt
 
     return all_stmts
+
+def emit_test_left(args):
+    or_test, opt_if = args
+    if opt_if == '':
+        return or_test
+    _, cond, _, orelse = opt_if
+    return ast.IfExp(cond, or_test, orelse)
+
+def emit_test_list_star_expr(args):
+    test_or_star, opt_following_test_or_star, opt_trailing_comma = unpack_n(args, 3)
+    if opt_following_test_or_star != '':
+        _, exprs = zip(*opt_following_test_or_star)
+        return (test_or_star,) + exprs
+    return test_or_star,
+
+def emit_test_list(args):
+    first, remainder, opt_trail = unpack_n(args, 3)
+    if remainder == '':
+        return ast.Tuple((first,))
+    _, following = zip(*remainder)
+    return ast.Tuple((first,) + following)
+
+def emit_expr_augassign(args):
+    test_list, augassign, yield_or_test_list = unpack_n(args, 3)
+    first_expr, *remainder = test_list
+    if remainder:
+        raise SyntaxError("Invalid multiple assignments for augassign")
+
+    lit_to_op = {'+=': ast.OperatorType.Add,
+                 '-=': ast.OperatorType.Sub,
+                 '*=': ast.OperatorType.Mult,
+                 '/=': ast.OperatorType.Div,
+                 '//=': ast.OperatorType.FloorDiv,
+                 '@=': ast.OperatorType.MatMult,
+                 '<<=': ast.OperatorType.LShift,
+                 '>>=': ast.OperatorType.RShift,
+                 '|=': ast.OperatorType.BitOr,
+                 '&=': ast.OperatorType.BitAnd,
+                 '^=': ast.OperatorType.BitXOr,
+                 '**=': ast.OperatorType.Pow}
+    return ast.AugAssign(first_expr, lit_to_op[augassign], yield_or_test_list)
+
+def emit_or_test(args):
+    and_test, or_and_tests = args
+    if or_and_tests == '':
+        return and_test
+
+    _, further_ands = zip(*or_and_tests)
+    return ast.BoolOp(ast.BoolOpType.Or, (and_test,)+further_ands)
+
+def emit_not_test(args):
+    _, test = args
+    return ast.UnaryOp(ast.UnaryOpType.Not, test)
+
+def emit_and_test(args):
+    not_test, and_not_tests = args
+    if and_not_tests == '':
+        return not_test
+
+    _, further_nots = zip(*and_not_tests)
+    return ast.BoolOp(ast.BoolOpType.And, (not_test,)+further_nots)
+
+def emit_expr_assigns(args):
+    test_list, assignments = args
+    if assignments == '':
+        if len(test_list) == 1:
+            return test_list[0]
+        return test_list
+
+    _, (*exprs, value) = zip(*assignments)
+    return ast.Assignment(test_list+tuple(exprs), value)
+
+def emit_comparison(args):
+    expr, comp_exprs = args
+    if comp_exprs == '':
+        return expr
+    ops, comparators = zip(*comp_exprs)
+    return ast.Compare(expr, ops, comparators)
+
+def emit_expr(args):
+    xor, opt_xors = args
+    if opt_xors == '':
+        return xor
+    left = xor
+    for _, right in opt_xors:
+        left = ast.BinOp(left, ast.OperatorType.BitOr, right)
+    return left
+
+def emit_xor_expr(args):
+    and_expr, opt_xor_exprs = args
+    if opt_xor_exprs == '':
+        return and_expr
+
+    left = and_expr
+    for _, right in opt_xor_exprs:
+        left = ast.BinOp(left, ast.OperatorType.BinXOr, right)
+    return left
+
+def emit_and_expr(args):
+    shift_expr, opt_shift_exprs = args
+    if opt_shift_exprs == '':
+        return shift_expr
+    left = shift_expr
+    for _, right in opt_shift_exprs:
+        left = ast.BinOp(left, ast.OperatorType.BitAnd, right)
+    return left
+
+def emit_shift_expr(args):
+    arith_expr, opt_shift_exprs = args
+    if opt_shift_exprs == '':
+        return arith_expr
+
+    op_table = {'>>': ast.OperatorType.RShift, '<<': ast.OperatorType.LShift}
+
+    left = arith_expr
+    for shift_expr, right in opt_shift_exprs:
+        left = ast.BinOp(left, op_table[shift_expr], right)
+    return left
+
+def emit_arith_exor(args):
+    term, opt_ariths = args
+    if opt_ariths == '':
+        return term
+
+    op_table = {'+': ast.OperatorType.Add, '-': ast.OperatorType.Sub}
+
+    left = term
+    for arith_op, right in opt_ariths:
+        left = ast.BinOp(left, op_table[arith_op], right)
+    return left
+
+def emit_term(args):
+    factor, opt_terms = args
+    if opt_terms == '':
+        return factor
+
+    op_table = {'*': ast.OperatorType.Mult,
+                '/': ast.OperatorType.Div,
+                '%': ast.OperatorType.Mod,
+                '//': ast.OperatorType.FloorDiv,
+                '@': ast.OperatorType.MatMult}
+
+    left = factor
+    for term_op, right in opt_terms:
+        left = ast.BinOp(left, op_table[term_op], right)
+    return left
+
+def emit_factor(args):
+    op, factor = args
+    op_table = {'+': ast.UnaryOpType.UAdd, '-': ast.UnaryOpType.USub, '~': ast.UnaryOpType.Invert}
+    return ast.UnaryOp(op_table[op], factor)
+
+def emit_power(args):
+    atom, opt_factor = args
+    if opt_factor == '':
+        return atom
+    _, exponent = opt_factor
+    return ast.BinOp(atom, ast.OperatorType.Pow, exponent)
+
+def emit_id(value):
+    return ast.Name(value)
+
+def emit_arg_list(args):
+    arg, opt_args, opt_comma = unpack_n(args, 3)
+    if opt_args == '':
+        return arg,
+    commas, following_args = zip(*opt_args)
+    return (arg,) + following_args
+
+def emit_kwargs(args):
+    _, arg = args
+    return ast.Keyword(None, arg)
+
+def emit_starred(args):
+    _, arg = args
+    return ast.Starred(arg)
+
+def emit_nl_indented(args):
+    _, _, stmts, _ = unpack_n(args, 4)
+    return stmts
+
+def emit_file_input(args):
+    nl_or_stmts, _ = args
+    if nl_or_stmts == '':
+        return ()
+    return nl_or_stmts
+
+def args_list_to_args_kwargs(arg_list):
+    args = []
+    keywords = []
+    for arg in arg_list:
+        if isinstance(arg, ast.Keyword):
+            keywords.append(arg)
+        else:
+            if keywords:
+                raise SyntaxError("Positional arg after keyword arg")
+            args.append(arg)
+    return tuple(args), tuple(keywords)
+
+def emit_class_def(args):
+    _, cls_name, opt_args, _, body = unpack_n(args, 5)
+    if opt_args == '':
+        bases = ()
+        keywords = ()
+    else:
+        _, arg_list, _ = unpack_n(opt_args, 3)
+        bases, keywords = args_list_to_args_kwargs(arg_list)
+    return ast.ClassDef(cls_name, bases, keywords, body, ())
 
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
 # g.eval_input = g.test_list & +ter('NEWLINE') & ter('ENDMARKER')
-g.file_input = +(ter('NEWLINE') | g.stmt) & ter('ENDMARKER')
+g.file_input = (+(ter('NEWLINE') | g.stmt) & ter('ENDMARKER')) >> emit_file_input
 
 g.decorator = ter('@') & g.dotted_name & ~(ter('(') & ~g.arg_list & ter(')')) & ter('NEWLINE')
 g.decorators = one_plus(g.decorator)
@@ -333,8 +544,9 @@ g.stmt = g.simple_stmt | g.compound_stmt
 
 g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt
 g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
-g.expr_stmt = g.test_list_star_expr & (g.augassign & (g.yield_expr | g.test_list) | +(ter('=') & (g.yield_expr | g.test_list_star_expr)))
-g.test_list_star_expr = (g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(',')
+g.expr_stmt = (g.test_list_star_expr & g.augassign & (g.yield_expr | g.test_list)) >> emit_expr_augassign | \
+              (g.test_list_star_expr & +(ter('=') & (g.yield_expr | g.test_list_star_expr))) >> emit_expr_assigns
+g.test_list_star_expr = ((g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(',')) >> emit_test_list_star_expr
 g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') | ter('^=') \
               | ter('<<=') | ter('>>=') | ter('**=') | ter('//=') | ter('@=')
 g.del_stmt = ter('del') & g.expr_list >> emit_del
@@ -372,54 +584,108 @@ g.try_stmt = (ter('try') & ter(':') & g.suite &
 g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite) >> emit_with
 g.with_item = g.test & ~(ter('as') & g.expr)
 g.except_clause = ter('except') & ~(g.test & ~(ter('as') & ter('ID')))
-g.suite = g.simple_stmt | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter('DEDENT'))
-
-g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) | g.lambda_def
+g.suite = g.simple_stmt | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter('DEDENT')) >> emit_nl_indented
+g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) >> emit_test_left | g.lambda_def
 g.test_no_cond = g.or_test | g.lambda_def_no_cond
 
 g.lambda_def = (ter('lambda') & ~g.var_args_list & ter(':') & g.test) >> emit_lambda_def
 g.lambda_def_no_cond = ter('lambda') & ~g.var_args_list & ter(':') & g.test_no_cond
-g.or_test = g.and_test & +(ter('or') & g.and_test)
-g.and_test = g.not_test & +(ter('and') & g.not_test)
-g.not_test = (ter('not') & g.not_test) | g.comparison
-g.comparison = g.expr & +(g.comp_op & g.expr)
+g.or_test = (g.and_test & +(ter('or') & g.and_test)) >> emit_or_test
+g.and_test = (g.not_test & +(ter('and') & g.not_test)) >> emit_and_test
+g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
+g.comparison = (g.expr & +(g.comp_op & g.expr)) >> emit_comparison
 
 g.comp_op = ter('<') | ter('>') | ter('==') | ter('>=') | ter('<=') | ter('<>') | ter('!=') | ter('in') | ter(
     'not') & ter('in') | ter('is') | ter('is') & ter('not')
 g.star_expr = ter('*') & g.expr
-g.expr = g.xor_expr & +(ter('|') & g.xor_expr)
-g.xor_expr = g.and_expr & +(ter('^') & g.and_expr)
-g.and_expr = g.shift_expr & +(ter('&') & g.shift_expr)
-g.shift_expr = g.arith_expr & +((ter('<<') | ter('>>')) & g.arith_expr)
-g.arith_expr = g.term & +((ter('+') | ter('-')) & g.term)
-g.term = g.factor & +((ter('*') | ter('@') | ter('/') | ter('%') | ter('//')) & g.factor)
-g.factor = ((ter('+') | ter('-') | ter('~')) & g.factor) | g.power
-g.power = g.atom_expr & ~(ter('**') & g.factor)
-g.atom_expr = g.atom & +g.trailer
+g.expr = (g.xor_expr & +(ter('|') & g.xor_expr)) >> emit_expr
+
+g.xor_expr = (g.and_expr & +(ter('^') & g.and_expr)) >> emit_xor_expr
+g.and_expr = (g.shift_expr & +(ter('&') & g.shift_expr)) >> emit_and_expr
+g.shift_expr = (g.arith_expr & +((ter('<<') | ter('>>')) & g.arith_expr)) >> emit_shift_expr
+g.arith_expr = (g.term & +((ter('+') | ter('-')) & g.term)) >> emit_arith_exor
+g.term = (g.factor & +((ter('*') | ter('@') | ter('/') | ter('%') | ter('//')) & g.factor)) >> emit_term
+g.factor = ((ter('+') | ter('-') | ter('~')) & g.factor) >> emit_factor | g.power
+g.power = (g.atom_expr & ~(ter('**') & g.factor)) >> emit_power
+
+
+def emit_atom_expr(args):
+    atom, trailers = args
+    if trailers == '':
+        return atom
+
+    node = atom
+
+    for trailer in trailers:
+        # XXX do this more efficiently?
+        body, end_char = trailer
+        if end_char == ']':
+            _, opt_slice = body
+            node = ast.Subscript(node, opt_slice)
+
+        elif end_char == ')':
+            _, arg_list = body
+
+            arguments, keywords = args_list_to_args_kwargs(arg_list)
+            node = ast.Call(node, arguments, keywords)
+
+        else:
+            node = ast.Attribute(node, end_char)
+
+    return node
+
+g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
 g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) |
           (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) |
           (ter('{') & ~g.dict_or_set_maker & ter('}')) |
-          ter('ID') | ter('NUMBER') | one_plus(ter('LIT')) | ter('...') | ter('None') | ter('True') | ter('False'))
+          ter('ID') >> emit_id | ter('NUMBER') | one_plus(ter('LIT')) | ter('...') | ter('None') | ter('True') | ter('False'))
 g.test_list_comp = (g.test | g.star_expr) & (g.comp_for | +(ter(',') & (g.test | g.star_expr)) & ~ter(','))
 g.trailer = (ter('(') & ~g.arg_list & ter(')')) | (ter('[') & g.subscript_list & ter(']')) | (ter('.') & ter('ID'))
+g.arg_list = (g.argument & +(ter(',') & g.argument) & ~ter(',')) >> emit_arg_list
 g.subscript_list = g.subscript & +(ter(',') & g.subscript) & ~ter(',')
 g.subscript = g.test | (~g.test & ter(':') & ~g.test & ~g.slice_op)
 g.slice_op = ter(':') & ~g.test
 g.expr_list = (g.expr | g.star_expr) & +(ter(',') & (g.expr | g.star_expr)) & ~ter(',')
-g.test_list = g.test & +(ter(',') & g.test) & ~ter(',')
+g.test_list = (g.test & +(ter(',') & g.test) & ~ter(',')) >> emit_test_list
 g.dict_or_set_maker = (((g.test & ter(':') & g.test) | (ter('**') & g.expr) &
                         (
                         g.comp_for | +(ter(',') & ((g.test & ter(':') & g.test) | (ter('**') & g.expr))) & ~ter(','))) |
                        ((g.test | g.star_expr) & (g.comp_for | +(ter(',') & (g.test | g.star_expr)) & ~ter(','))))
-g.class_def = ter('class') & ter('ID') & ~(ter('(') & ~g.arg_list & ter(')')) & ter(':') & g.suite
-g.arg_list = g.argument & +(ter(',') & g.argument) & ~ter(',')
 
-g.argument = ((g.test & ~g.comp_for) |
-              (g.test & ter('=') & g.test) |
-              (ter('**') & g.test) |
-              (ter('*') & g.test))
+# TODO rename "_list" construct to something else if can return tuple or single value
+g.class_def = (ter('class') & ter('ID') & ~(ter('(') & ~g.arg_list & ter(')')) & ter(':') & g.suite) >> emit_class_def
+
+def emit_keyword(args):
+    name, _, value = unpack_n(args, 3)
+    return ast.Keyword(name, value)
+
+def emit_arg(args):
+    name, opt_comp_for = args
+    if opt_comp_for == '':
+        return name
+
+    return args
+
+
+g.argument = ((g.test & ~g.comp_for) >> emit_arg |
+              (g.test & ter('=') & g.test) >> emit_keyword |
+              (ter('**') & g.test) >> emit_kwargs |
+              (ter('*') & g.test) >> emit_starred)
 g.comp_iter = g.comp_for | g.comp_if
-g.comp_for = ter('for') & g.expr_list & ter('in') & g.or_test & ~g.comp_iter
+def emit_comp_for(args):
+    _, expr_list, _, or_test, opt = unpack_n(args, 5)
+    if opt == '':
+        opt = None
+    return ast._CompFor(expr_list, or_test, opt)
+
+def emit_comp_if(args):
+    _, cond, opt = unpack_n(args, 3)
+    if opt == '':
+        opt = None
+
+    return ast._CompIf(cond, opt)
+
+g.comp_for = (ter('for') & g.expr_list & ter('in') & g.or_test & ~g.comp_iter) >> emit_comp_for
 g.comp_if = ter('if') & g.test_no_cond & ~g.comp_iter
 
 g.yield_expr = ter('yield') & ~g.yield_arg
