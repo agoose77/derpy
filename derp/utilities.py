@@ -57,26 +57,19 @@ memoized_property = lambda f: property(memoized(f))
 
 
 def unpack_n(seq, n, first=True):
-    """Perform n-depth tuple pair unpacking:
-
-    Transforms ((x, y), z) into x, y, z with n=3.
-    """
-    terms = []
-
-    for i in range(n - 1):
-        if first:
-            seq, a = seq
-
-        else:
-            a, seq = seq
-
-        terms.append(a)
-    terms.append(seq)
+    if n <= 1:
+        yield seq
+        return
 
     if first:
-        terms.reverse()
+        remainder, x = seq
+        yield from unpack_n(remainder, n-1, True)
+        yield x
 
-    return terms
+    else:
+        x, remainder = seq
+        yield x
+        yield from unpack_n(remainder, n-1, True)
 
 
 class _OverwritableProperty:

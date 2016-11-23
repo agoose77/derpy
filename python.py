@@ -99,6 +99,9 @@ def emit_func_def(args):
     else:
         _, returns = ret_type
 
+    if params == '':
+        params = ()
+
     return ast.FunctionDef(name, params, body, decorators, returns)
 
 def emit_params(args):
@@ -181,7 +184,7 @@ def emit_while(args):
 def emit_for(args):
     _, target, _, iterable, _, body, optelse = unpack_n(args, 7)
     else_ = None if optelse == '' else optelse
-    return ast.If(target, iterable, body, else_)
+    return ast.For(target, iterable, body, else_)
 
 def emit_with(args):
     _, with_item, with_items, _, body = unpack_n(args, 5)
@@ -321,7 +324,7 @@ def emit_test_list_star_expr(args):
 def emit_test_list(args):
     first, remainder, opt_trail = unpack_n(args, 3)
     if remainder == '':
-        return ast.Tuple((first,))
+        return first
     _, following = zip(*remainder)
     return ast.Tuple((first,) + following)
 
@@ -372,15 +375,22 @@ def emit_expr_assigns(args):
             return test_list[0]
         return test_list
 
-    _, (*exprs, value) = zip(*assignments)
+    _, *exprs, value = zip(*assignments)
     return ast.Assignment(test_list+tuple(exprs), value)
 
 def emit_comparison(args):
     expr, comp_exprs = args
+
     if comp_exprs == '':
         return expr
+
+    op_table = {'==': ast.ComparisonOpType.Eq, '!=': ast.ComparisonOpType.NotEq, '>': ast.ComparisonOpType.Gt,
+                '<': ast.ComparisonOpType.Lt, '>=': ast.ComparisonOpType.GtE, '<=': ast.ComparisonOpType.LtE,
+                'is': ast.ComparisonOpType.Is, ('is','not'): ast.ComparisonOpType.IsNot,
+                ('not', 'in'): ast.ComparisonOpType.Gt, 'in': ast.ComparisonOpType.In}
     ops, comparators = zip(*comp_exprs)
-    return ast.Compare(expr, ops, comparators)
+    op_enums = tuple(op_table[o] for o in ops)
+    return ast.Compare(expr, op_enums, comparators)
 
 def emit_expr(args):
     xor, opt_xors = args
@@ -512,6 +522,64 @@ def emit_class_def(args):
         bases, keywords = args_list_to_args_kwargs(arg_list)
     return ast.ClassDef(cls_name, bases, keywords, body, ())
 
+def emit_keyword(args):
+    name, _, value = unpack_n(args, 3)
+    return ast.Keyword(name, value)
+
+def emit_arg(args):
+    name, opt_comp_for = args
+    if opt_comp_for == '':
+        return name
+
+    return args
+
+def emit_comp_for(args):
+    _, expr_list, _, or_test, opt = unpack_n(args, 5)
+    if opt == '':
+        opt = None
+    return ast._CompFor(expr_list, or_test, opt)
+
+def emit_comp_if(args):
+    _, cond, opt = unpack_n(args, 3)
+    if opt == '':
+        opt = None
+
+    return ast._CompIf(cond, opt)
+
+def emit_yield_expr(args):
+    _, opt_arg = args
+    if opt_arg == '':
+        opt_arg = None
+    return ast.Yield(opt_arg)
+
+def emit_num(num):
+    return ast.Num(num)
+
+def emit_atom_expr(args):
+    atom, trailers = args
+    if trailers == '':
+        return atom
+
+    node = atom
+
+    for trailer in trailers:
+        # XXX do this more efficiently?
+        body, end_char = trailer
+        if end_char == ']':
+            _, opt_slice = body
+            node = ast.Subscript(node, opt_slice)
+
+        elif end_char == ')':
+            _, arg_list = body
+
+            arguments, keywords = args_list_to_args_kwargs(arg_list)
+            node = ast.Call(node, arguments, keywords)
+
+        else:
+            node = ast.Attribute(node, end_char)
+
+    return node
+
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
@@ -532,7 +600,7 @@ def generate_args_list(tfpdef):
             (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) >> emit_varargs |
             tfpdef_kwargs >> emit_kwargs_only)
 
-g.parameters = (ter('(') & g.typed_args_list & ter(')')) >> emit_params
+g.parameters = (ter('(') & ~g.typed_args_list & ter(')')) >> emit_params
 
 g.typed_args_list = generate_args_list(g.tfpdef)
 g.tfpdef = (ter('ID') & ~(ter(':') & g.test)) >> emit_tfpdef
@@ -540,6 +608,7 @@ g.tfpdef = (ter('ID') & ~(ter(':') & g.test)) >> emit_tfpdef
 g.var_args_list = generate_args_list(g.vfpdef)
 g.vfpdef = ter('ID')
 
+# TODO how to discern between lists and single values
 g.stmt = g.simple_stmt | g.compound_stmt
 
 g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt
@@ -608,37 +677,11 @@ g.term = (g.factor & +((ter('*') | ter('@') | ter('/') | ter('%') | ter('//')) &
 g.factor = ((ter('+') | ter('-') | ter('~')) & g.factor) >> emit_factor | g.power
 g.power = (g.atom_expr & ~(ter('**') & g.factor)) >> emit_power
 
-
-def emit_atom_expr(args):
-    atom, trailers = args
-    if trailers == '':
-        return atom
-
-    node = atom
-
-    for trailer in trailers:
-        # XXX do this more efficiently?
-        body, end_char = trailer
-        if end_char == ']':
-            _, opt_slice = body
-            node = ast.Subscript(node, opt_slice)
-
-        elif end_char == ')':
-            _, arg_list = body
-
-            arguments, keywords = args_list_to_args_kwargs(arg_list)
-            node = ast.Call(node, arguments, keywords)
-
-        else:
-            node = ast.Attribute(node, end_char)
-
-    return node
-
 g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
 g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) |
           (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) |
           (ter('{') & ~g.dict_or_set_maker & ter('}')) |
-          ter('ID') >> emit_id | ter('NUMBER') | one_plus(ter('LIT')) | ter('...') | ter('None') | ter('True') | ter('False'))
+          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) | ter('...') | ter('None') | ter('True') | ter('False'))
 g.test_list_comp = (g.test | g.star_expr) & (g.comp_for | +(ter(',') & (g.test | g.star_expr)) & ~ter(','))
 g.trailer = (ter('(') & ~g.arg_list & ter(')')) | (ter('[') & g.subscript_list & ter(']')) | (ter('.') & ter('ID'))
 g.arg_list = (g.argument & +(ter(',') & g.argument) & ~ter(',')) >> emit_arg_list
@@ -652,43 +695,20 @@ g.dict_or_set_maker = (((g.test & ter(':') & g.test) | (ter('**') & g.expr) &
                         g.comp_for | +(ter(',') & ((g.test & ter(':') & g.test) | (ter('**') & g.expr))) & ~ter(','))) |
                        ((g.test | g.star_expr) & (g.comp_for | +(ter(',') & (g.test | g.star_expr)) & ~ter(','))))
 
-# TODO rename "_list" construct to something else if can return tuple or single value
-g.class_def = (ter('class') & ter('ID') & ~(ter('(') & ~g.arg_list & ter(')')) & ter(':') & g.suite) >> emit_class_def
-
-def emit_keyword(args):
-    name, _, value = unpack_n(args, 3)
-    return ast.Keyword(name, value)
-
-def emit_arg(args):
-    name, opt_comp_for = args
-    if opt_comp_for == '':
-        return name
-
-    return args
-
 
 g.argument = ((g.test & ~g.comp_for) >> emit_arg |
               (g.test & ter('=') & g.test) >> emit_keyword |
               (ter('**') & g.test) >> emit_kwargs |
               (ter('*') & g.test) >> emit_starred)
 g.comp_iter = g.comp_for | g.comp_if
-def emit_comp_for(args):
-    _, expr_list, _, or_test, opt = unpack_n(args, 5)
-    if opt == '':
-        opt = None
-    return ast._CompFor(expr_list, or_test, opt)
 
-def emit_comp_if(args):
-    _, cond, opt = unpack_n(args, 3)
-    if opt == '':
-        opt = None
-
-    return ast._CompIf(cond, opt)
+# TODO rename "_list" construct to something else if can return tuple or single value
+g.class_def = (ter('class') & ter('ID') & ~(ter('(') & ~g.arg_list & ter(')')) & ter(':') & g.suite) >> emit_class_def
 
 g.comp_for = (ter('for') & g.expr_list & ter('in') & g.or_test & ~g.comp_iter) >> emit_comp_for
 g.comp_if = ter('if') & g.test_no_cond & ~g.comp_iter
 
-g.yield_expr = ter('yield') & ~g.yield_arg
+g.yield_expr = (ter('yield') & ~g.yield_arg) >> emit_yield_expr
 g.yield_arg = (ter('from') & g.test) | g.test_list
 
 # Check all parsers were defined
@@ -707,4 +727,5 @@ if __name__ == "__main__":
     if not result:
         print("Failed to parse!")
     else:
-        print(result)
+        from ast import print_ast
+        print('parse', result.pop()[0].value)

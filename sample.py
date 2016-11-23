@@ -1,1 +1,1 @@
-dunc(x, (y for y in range(10)))
+x = 1
