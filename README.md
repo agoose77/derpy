@@ -30,5 +30,5 @@ P represents a parser (e.g S above)
 * `one_of(P)` returns a tuple of 1+ matches of P
 * `greedy(P)` functional name for `+P` (repeat)
 * `optional(P)` functional name for `~P` (optional)
-* `ter(c)` returns parser to match a token with the `first` attribute string equal to c.
+* `ter(c)` returns parser to match a token with the first attribute string equal to c.
 * `to_text(P, max_depth=None)` returns text representation of parser. Optionally limited to depth N
