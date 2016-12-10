@@ -813,9 +813,9 @@ if __name__ == "__main__":
 
     if not result:
         print("Failed to parse!")
+
     else:
-        from ast import print_ast
         module = result.pop()
         print('parse', module)
         module.body[0].names += (ast.Ellipsis_(),)
-        ast.print_ast(module)
+        ast.print_ast(module, format_func=ast.highlight_node_formatter(ast.Ellipsis_, ast.green, ast.blue))

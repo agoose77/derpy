@@ -157,23 +157,42 @@ ImportFromSubModules = make_ast_node('ImportFromSubModules', 'aliases')
 
 
 def red(text):
-    return '\033[91m' + text
+    return '\x1b[0;31;m' + text
 
 
 def blue(text):
-    return '\033[94m' + text
+    return '\x1b[0;34;m' + text
 
 
 def green(text):
-    return '\033[92m' + text
-
-colours = red, blue, green
+    return '\x1b[0;32;m' + text
 
 
-def write_ast(node, writer, level=0, indent='  ', allow_colours=True):
-    if allow_colours:
-        colour_f = colours[level % len(colours)]
-        write = lambda t: writer.write(colour_f(t))
+def white(text):
+    return '\33[0;37;m' + text
+
+
+colours = red, blue, green, white
+
+
+def cyclic_colour_formatter(node, level, text):
+    colour_f = colours[level % len(colours)]
+    return colour_f(text)
+
+
+def highlight_node_formatter(node_cls, match_format, other_format):
+    def wrapper(node, level, text):
+        if isinstance(node, node_cls):
+            return match_format(text)
+        return other_format(text)
+    return wrapper
+
+
+def write_ast(node, writer, level=0, indent='  ', format_func=None):
+    if format_func:
+        def write(text):
+            writer.write(format_func(node, level, text))
+
     else:
         write = writer.write
 
@@ -198,7 +217,7 @@ def write_ast(node, writer, level=0, indent='  ', allow_colours=True):
             if isinstance(value, AstNode):
                 field_text_left = field_margin + "{} = ".format(name)
                 write(field_text_left)
-                write_ast(value, writer, level + 1, indent, allow_colours)
+                write_ast(value, writer, level + 1, indent, format_func)
 
             # Write tuple field
             elif type(value) is tuple:
@@ -213,7 +232,7 @@ def write_ast(node, writer, level=0, indent='  ', allow_colours=True):
 
                     if isinstance(elem, AstNode):
                         write(elem_margin)
-                        write_ast(elem, writer, level + 2, indent, allow_colours)
+                        write_ast(elem, writer, level + 2, indent, format_func)
 
                     else:
                         write(elem_margin + repr(value))
@@ -301,7 +320,7 @@ class NodeTransformer(NodeVisitor):
         return node
 
 
-def print_ast(node):
+def print_ast(node, format_func=None):
     io = StringIO()
-    write_ast(node, io)
+    write_ast(node, io, format_func=format_func)
     print(io.getvalue())
