@@ -1,14 +1,7 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+from collections import deque, OrderedDict
 from enum import Enum
-from pprint import pprint, pformat
-
-
-ArgUnpackTypes = Enum('ArgUnpackTypes', 'args kwargs none')
-UnaryOpType = Enum('UnaryOp', 'UAdd Invert USub Not')
-BoolOpType = Enum('BoolOp', 'And Or')
-OperatorType = Enum('Operator', 'Add Div Sub Mod Pow Mult MatMult RShift LShift BitOr BitXOr BitAnd FloorDiv')
-ComparisonOpType = Enum('ComparisonOp', 'Eq NotEq Lt LtE Gt GtE Is IsNot In NotIn')
+from io import StringIO
 
 
 class AstNode(ABC):
@@ -16,6 +9,10 @@ class AstNode(ABC):
     @abstractmethod
     def _as_dict(self):
         pass
+
+    def __repr__(self):
+        field_str = ", ".join(("{}={!r}".format(n, v) for n, v in self._as_dict().items()))
+        return "{}({})".format(self.__class__.__name__, field_str)
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
@@ -31,6 +28,7 @@ class AstNode(ABC):
 def make_ast_node(name, field_str, parent=None):
     fields = [f.strip() for f in field_str.split(' ') if f.strip()]
     cls_dict = {}
+
     if parent is None:
         bases = AstNode,
     else:
@@ -63,86 +61,247 @@ def make_ast_node(name, field_str, parent=None):
     return type(name, bases, cls_dict)
 
 
-Slice = make_ast_node('Subscript', 'first second third')
+Module = make_ast_node('Module', 'body')
+Interactive = make_ast_node('Interactive', 'body')
+Expression = make_ast_node('Expression', 'body')
 
-Bytes = make_ast_node('Bytes', 'value')
-String = make_ast_node('String', 'value')
-Num = make_ast_node('Num', 'value')
-Dict = make_ast_node('Dict', 'keys values')
-List = make_ast_node('List', 'values')
-Set = make_ast_node('Set', 'elts')
-Tuple = make_ast_node('Tuple', 'elts')
-Assignment = make_ast_node('Assignment', 'targets value')
-FunctionDef = make_ast_node('FunctionDef', 'name args body decorators returns')
-Pass = make_ast_node('Pass', '')
-Ellipsis_ = make_ast_node('Ellipsis_', '')
-None_ = make_ast_node('None_', '')
-Del = make_ast_node('Del', '')
-Not = make_ast_node('Not', 'expression')
-Continue = make_ast_node('Continue', '')
+### Statements ##############################################
+ClassDef = make_ast_node('ClassDef', 'name bases keywords body decorators')
+FuncDef = make_ast_node('FuncDef', 'name args body decorators returns')
+Return = make_ast_node('Return', 'value')
+
+Delete = make_ast_node('Delete', 'targets')
+Assign = make_ast_node('Assign', 'targets value')
+AugAssign = make_ast_node('Augassign', 'target op value')
+
+For = make_ast_node('For', 'target iter body or_else')
+While = make_ast_node('While', 'test body or_else')
+If = make_ast_node('If', 'test body or_else')
+With = make_ast_node('With', 'items body')
+
+Raise = make_ast_node('Raise', 'exc cause')
+Try = make_ast_node('Try', 'body handlers orelse finalbody')
 Assert = make_ast_node('Assert', 'test msg')
 
 Import = make_ast_node('Import', 'names')
 ImportFrom = make_ast_node('ImportFrom', 'module names level')
-Yield = make_ast_node('Yield', 'expr')
-YieldFrom = make_ast_node('YieldFrom', 'expr')
 
-Break = make_ast_node('Break', '')
-Return = make_ast_node('Return', 'value')
-Nonlocal = make_ast_node('Nonlocal', 'names')
 Global = make_ast_node('Global', 'names')
-Raise = make_ast_node('Raise', 'exc cause')
-LambdaDef = make_ast_node('LambdaDef', 'args body')
-Compare = make_ast_node('Compare', 'left ops comparators')
-If = make_ast_node('If', 'test body or_else')
-IfExp = make_ast_node('IfExp', 'test body or_else')
-While = make_ast_node('While', 'test body or_else')
-For = make_ast_node('For', 'target iter body or_else')
-ClassDef = make_ast_node('ClassDef', 'name bases keywords body decorators')
-Attribute = make_ast_node('Attribute', 'value attr')
-Subscript = make_ast_node('Subscript', 'value slice')
-Call = make_ast_node('Call', 'func args keywords')
-Arg = make_ast_node('Arg', 'arg annotation')
-Arguments = make_ast_node('Arguments', 'args vararg kwonlyargs kw_defaults kwarg defaults')
+Nonlocal = make_ast_node('Nonlocal', 'names')
+Expr = make_ast_node('Expr', 'exp')
+Pass = make_ast_node('Pass', '')
+Break = make_ast_node('Break', '')
+Continue = make_ast_node('Continue', '')
+#############################################################
+
+### Expressions #############################################
+BoolOp = make_ast_node('BoolOp', 'values')
 BinOp = make_ast_node('BinOp', 'left op right')
 UnaryOp = make_ast_node('UnaryOp', 'op operand')
-BoolOp = make_ast_node('BoolOp', 'values')
-With = make_ast_node('With', 'items body')
-Expr = make_ast_node('Expr', 'exp')
-AugAssign = make_ast_node('Augassign', 'target op value')
+LambdaDef = make_ast_node('LambdaDef', 'args body')
+IfExp = make_ast_node('IfExp', 'test body or_else')
+Dict = make_ast_node('Dict', 'keys values')
+Set = make_ast_node('Set', 'elts')
+ListComp = make_ast_node('ListComp', 'elt generators')
+SetComp = make_ast_node('SetComp', 'elt generators')
+DictComp = make_ast_node('DictComp', 'key value generators')
+GeneratorExp = make_ast_node('GeneratorExp', 'elt generators')
+# the grammar constrains where yield expressions can occur
+Yield = make_ast_node('Yield', 'expr')
+YieldFrom = make_ast_node('YieldFrom', 'expr')
+# need sequences for compare to distinguish between
+# x < 4 < 3 and (x < 4) < 3
+Compare = make_ast_node('Compare', 'left ops comparators')
+Call = make_ast_node('Call', 'func args keywords')
+Num = make_ast_node('Num', 'value')
+Str = make_ast_node('Str', 's')
+Bytes = make_ast_node('Bytes', 's')
+NameConstant = make_ast_node('NameConstant', 'value')
+Ellipsis_ = make_ast_node('Ellipsis_', '')
 
-# arg=None for **kwargs
-Keyword = make_ast_node('Keyword', 'arg value')
+# the following expression can appear in assignment context
+Attribute = make_ast_node('Attribute', 'value attr')
+Subscript = make_ast_node('Subscript', 'value slice')
 Starred = make_ast_node('Starred', 'value')
 Name = make_ast_node('Name', 'id')
+List = make_ast_node('List', 'values')
+Tuple = make_ast_node('Tuple', 'elts')
+#############################################################
 
-_CompFor = make_ast_node('CompFor', 'exprs or_test iterable')
-_CompIf = make_ast_node('CompIf', 'cond opt')
+### Slices ##################################################
+Slice = make_ast_node('Subscript', 'first second third')
+ExtSlice = make_ast_node('ExitSubscript', 'dims')
+Index = make_ast_node('Index', 'value')
+#############################################################
+
+ArgUnpackTypes = Enum('ArgUnpackTypes', 'args kwargs none')
+UnaryOpType = Enum('UnaryOp', 'UAdd Invert USub Not')
+BoolOpType = Enum('BoolOp', 'And Or')
+OperatorType = Enum('Operator', 'Add Div Sub Mod Pow Mult MatMult RShift LShift BitOr BitXOr BitAnd FloorDiv')
+ComparisonOpType = Enum('ComparisonOp', 'Eq NotEq Lt LtE Gt GtE Is IsNot In NotIn')
+
+Comprehension = make_ast_node('Comprehension', 'target iter ifs')
+ExceptionHandler = make_ast_node('ExceptionHandler', 'type name body')
+
+Arguments = make_ast_node('Arguments', 'args vararg kwonlyargs kw_defaults kwarg defaults')
+Arg = make_ast_node('Arg', 'arg annotation')
+
+Keyword = make_ast_node('Keyword', 'arg value')# arg=None for **kwargs
+Alias = make_ast_node('Alias', 'name asname')
+WithItem = make_ast_node('WithItem', 'context_expr optional_vars')
+
+CompFor = make_ast_node('CompFor', 'exprs or_test iterable')
+CompIf = make_ast_node('CompIf', 'cond opt')
+ImportFromModule = make_ast_node('ImportFromModule', 'level module')
+ImportFromSubModules = make_ast_node('ImportFromSubModules', 'aliases')
 
 
-def format_ast(node, indent='', field_indent='    '):
-    fields = []
-    children = []
-    for name, value in node._as_dict().items():
+def red(text):
+    return '\033[91m' + text
+
+
+def blue(text):
+    return '\033[94m' + text
+
+
+def green(text):
+    return '\033[92m' + text
+
+colours = red, blue, green
+
+
+def write_ast(node, writer, level=0, indent='  ', allow_colours=True):
+    if allow_colours:
+        colour_f = colours[level % len(colours)]
+        write = lambda t: writer.write(colour_f(t))
+    else:
+        write = writer.write
+
+    root_margin = indent * level
+
+    as_dict = node._as_dict()
+
+    field_margin = (level + 1) * indent
+
+    if not as_dict:
+        write("{}()".format(node.__class__.__name__))
+
+    else:
+        write("{}(\n".format(node.__class__.__name__))
+
+        for i, (name, value) in enumerate(as_dict.items()):
+            # Between items separate with comma and newline
+            if i != 0:
+                write(",\n")
+
+            # Write AstNode
+            if isinstance(value, AstNode):
+                field_text_left = field_margin + "{} = ".format(name)
+                write(field_text_left)
+                write_ast(value, writer, level + 1, indent, allow_colours)
+
+            # Write tuple field
+            elif type(value) is tuple:
+                field_text_left = field_margin + "{} = (\n".format(name)
+                write(field_text_left)
+
+                j = -1
+                elem_margin = (level + 2) * indent
+                for j, elem in enumerate(value):
+                    if j != 0:
+                        write(",\n")
+
+                    if isinstance(elem, AstNode):
+                        write(elem_margin)
+                        write_ast(elem, writer, level + 2, indent, allow_colours)
+
+                    else:
+                        write(elem_margin + repr(value))
+
+                if j > -1:
+                    write(",\n")
+                    write(field_margin + ")")
+
+                else:
+                    write(field_margin+")")
+
+            # Write repr
+            else:
+                write(field_margin + "{} = {!r}".format(name, value))
+
+        write("\n"+root_margin+")")
+
+
+def iter_fields(node):
+    for key, value in node._as_dict().items():
+        yield key, value
+
+
+def iter_child_nodes(node):
+    for key in node._fields:
+        value = getattr(node, key)
+
         if isinstance(value, AstNode):
-            children.append((name, value))
-        else:
-            fields.append((name, value))
+            yield value
 
-    total_field_indent = indent + field_indent
-    stmts = ["{name} = {value}".format(name=name, value=value) for name, value in fields]
-    stmts.extend(["{name} = {value}"
-              .format(name=name, value=format_ast(child, total_field_indent, field_indent)) for name, child in children])
-    body = ("\n{indent}".format(indent=total_field_indent)).join(stmts)
-    return "{indent}{name}:\n{field_indent}{body}".format(field_indent=field_indent, indent=total_field_indent, name=node.__class__.__name__, body=body)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, AstNode):
+                    yield item
 
 
 def walk(node):
-    yield node
-    for name, child in node._as_dict():
-        if isinstance(child, AstNode):
-            yield from walk(child)
+    todo = deque([node])
+    while todo:
+        node = todo.popleft()
+        todo.extend(iter_child_nodes(node))
+        yield node
+
+
+class NodeVisitor:
+
+    def generic_visit(self, node):
+        for child in iter_child_nodes(node):
+            self.visit(child)
+
+    def visit(self, node):
+        visitor_name = "visit_{}".format(node.__class__.__name__)
+        visitor = getattr(self, visitor_name, self.generic_visit)
+        visitor(node)
+
+
+class NodeTransformer(NodeVisitor):
+
+    def generic_visit(self, node):
+        for field, old_value in iter_fields(node):
+            if isinstance(old_value, list):
+                new_values = []
+
+                for value in old_value:
+                    if isinstance(value, AstNode):
+                        value = self.visit(value)
+                        if value is None:
+                            continue
+
+                        elif not isinstance(value, AstNode):
+                            new_values.extend(value)
+                            continue
+
+                    new_values.append(value)
+                old_value[:] = new_values
+
+            elif isinstance(old_value, AstNode):
+                new_node = self.visit(old_value)
+                if new_node is None:
+                    delattr(node, field)
+
+                else:
+                    setattr(node, field, new_node)
+
+        return node
 
 
 def print_ast(node):
-    print(format_ast(node))
+    io = StringIO()
+    write_ast(node, io)
+    print(io.getvalue())

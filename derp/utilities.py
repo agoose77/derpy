@@ -56,20 +56,46 @@ def memoized(f):
 memoized_property = lambda f: property(memoized(f))
 
 
+def rflatten(seq, first=True):
+    """Recursively flatten nested tuples into flat list
+
+    (x, (y, z)) defines last ordering,
+    ((x, y), z) defines first ordering.
+    """
+    while True:
+        if not isinstance(seq, tuple):
+            yield seq
+            return
+
+        if first:
+            seq, x = seq
+        else:
+            x, seq = seq
+
+            yield x
+
+
 def unpack_n(seq, n, first=True):
-    if n <= 1:
-        yield seq
-        return
+    """Flatten N nested tuples into flat list
 
-    if first:
-        remainder, x = seq
-        yield from unpack_n(remainder, n-1, True)
-        yield x
+    (x, (y, z)) defines last ordering,
+    ((x, y), z) defines first ordering.
+    """
+    if n < 1:
+        raise ValueError(n)
 
+    elif n > 1:
+        if first:
+            seq, x = seq
+            yield from unpack_n(seq, n-1, True)
+            yield x
+
+        else:
+            x, seq = seq
+            yield x
+            yield from unpack_n(seq, n-1, False)
     else:
-        x, remainder = seq
-        yield x
-        yield from unpack_n(remainder, n-1, True)
+        yield seq
 
 
 class _OverwritableProperty:
