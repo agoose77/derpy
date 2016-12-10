@@ -239,6 +239,13 @@ def emit_with(args):
         all_items = (with_item,) + with_items
     return ast.With(all_items, body)
 
+def emit_with_item(args):
+    test, opt_as = args
+    if opt_as == "":
+        return ast.Alias(test, None)
+    _, expr = opt_as
+    return ast.Alias(test, expr)
+
 def emit_try(args):
     _, _, body, following = unpack_n(args, 4)
     raise NotImplemented
@@ -369,7 +376,6 @@ def emit_test_list_star_expr(args):
 def emit_test_list(args):
     first, remainder, opt_trail = unpack_n(args, 3)
     if remainder == '':
-        print('TL',[first])
         return first
     _, following = zip(*remainder)
     return ast.Tuple((first,) + following)
@@ -397,6 +403,7 @@ def emit_expr_augassign(args):
 def emit_or_test(args):
     and_test, or_and_tests = args
     if or_and_tests == '':
+        print("OR",[and_test])
         return and_test
 
     _, further_ands = zip(*or_and_tests)
@@ -637,6 +644,17 @@ def emit_expr_list(args):
     commas, exprs = zip(*opt_com_del_exprs)
     return exprs
 
+def emit_lit(lits):
+    first, *remainder = lits
+    for lit in remainder:
+        if not isinstance(lit, first.__class__):
+            raise TypeError("Cannot concat str and bytes")
+
+    value = first.__class__().join(lits)
+    if isinstance(first, bytes):
+        return ast.Bytes(value)
+    return ast.Str(value)
+
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
@@ -713,7 +731,8 @@ g.try_stmt = (ter('try') & ter(':') & g.suite &
               (ter('finally') & ter(':') & g.suite)
               )) >> emit_try
 g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite) >> emit_with
-g.with_item = g.test & ~(ter('as') & g.expr)
+
+g.with_item = (g.test & ~(ter('as') & g.expr)) >> emit_with_item
 g.except_clause = ter('except') & ~(g.test & ~(ter('as') & ter('ID')))
 g.suite = g.simple_stmt | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter('DEDENT')) >> emit_nl_indented
 g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) >> emit_test_left | g.lambda_def
@@ -745,6 +764,13 @@ def emit_list_comp(args):
         return ast.List(())
     return body
 
+def emit_generator_comp(args):
+    _, body, _ = unpack_n(args, 3)
+    if body == '':
+        return ast.Tuple(())
+    return ast.GeneratorExp(body)
+
+
 def emit_test_list_comp(args):
     test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr = args
 
@@ -756,10 +782,10 @@ def emit_test_list_comp(args):
         return ast.List(exprs)
 
 g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
-g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) |#>> emit_generator_comp |
+g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) >> emit_generator_comp |
           (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) >> emit_list_comp |
           (ter('{') & ~g.dict_or_set_maker & ter('}')) |#>> emit_dict_comp |
-          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) | ter('...') | ter('None') | ter('True') | ter('False'))
+          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) >> emit_lit | ter('...') | ter('None') | ter('True') | ter('False'))
 
 def emit_list_exprs(args):
     list_exprs, opt_comma = args
@@ -818,4 +844,4 @@ if __name__ == "__main__":
         module = result.pop()
         print('parse', module)
         module.body[0].names += (ast.Ellipsis_(),)
-        ast.print_ast(module, format_func=ast.highlight_node_formatter(ast.Ellipsis_, ast.green, ast.blue))
+        ast.print_ast(module, format_func=ast.highlight_node_formatter(ast.Alias, ast.green, ast.blue))

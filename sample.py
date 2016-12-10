@@ -1,3 +1,3 @@
 from .x.ast import fields
 
-s = [i for i in range(12)]
+s = 1j+0

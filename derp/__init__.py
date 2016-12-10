@@ -203,15 +203,10 @@ class Concatenate(Delayable):
                          Concatenate(Delta(self.left), self.right.derive(token)))
 
     def _derive_null(self):
-        result = set()
-
         deriv_left = self.left.derive_null()
         deriv_right = self.right.derive_null()
 
-        for a, b in product(deriv_left, deriv_right):
-            result.add((a, b))
-
-        return result
+        return set(product(deriv_left, deriv_right))
 
     @to_text_helper
     def to_text(self, seen):
@@ -333,11 +328,7 @@ class Reduce(Delayable):
         return Reduce(self.parser.derive(token), self.func)
 
     def _derive_null(self):
-        result = set()
-
-        for obj in self.parser.derive_null():
-            result.add(self.func(obj))
-        return result
+        return set(map(self.func, self.parser.derive_null()))
 
     @to_text_helper
     def to_text(self, seen):

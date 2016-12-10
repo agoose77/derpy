@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import deque, OrderedDict
 from enum import Enum
+from functools import partial
 from io import StringIO
 
 
@@ -9,10 +10,6 @@ class AstNode(ABC):
     @abstractmethod
     def _as_dict(self):
         pass
-
-    def __repr__(self):
-        field_str = ", ".join(("{}={!r}".format(n, v) for n, v in self._as_dict().items()))
-        return "{}({})".format(self.__class__.__name__, field_str)
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
@@ -25,7 +22,7 @@ class AstNode(ABC):
             return False
 
 
-def make_ast_node(name, field_str, parent=None):
+def make_ast_node(name, field_str='', parent=None):
     fields = [f.strip() for f in field_str.split(' ') if f.strip()]
     cls_dict = {}
 
@@ -49,6 +46,11 @@ def make_ast_node(name, field_str, parent=None):
         declare_hash ="def __hash__(self):\n    return hash(tuple(({values_str},)))".format(values_str=values_str)
         exec(declare_hash, cls_dict)
 
+        formatter_str = ", ".join("self.{}".format(name) for name in fields)
+        dict_str = ", ".join("{}={{!r}}".format(name, getattr) for name in fields)
+        declare_repr ="def __repr__(self):\n    return '{}({})'.format({})".format(name, dict_str, formatter_str)
+        exec(declare_repr, cls_dict)
+
     else:
         def as_dict(self):
             return {}
@@ -57,6 +59,11 @@ def make_ast_node(name, field_str, parent=None):
         def __hash__(self):
             return hash(())
         cls_dict['__hash__'] = __hash__
+
+        declare_repr = "def __repr__(self):\n    return '{}()'".format(name)
+        exec(declare_repr, cls_dict)
+
+    print(declare_repr)
 
     return type(name, bases, cls_dict)
 
@@ -134,10 +141,30 @@ ExtSlice = make_ast_node('ExitSubscript', 'dims')
 Index = make_ast_node('Index', 'value')
 #############################################################
 
+# TODO ast inheritance
+
+class OperatorNode(AstNode):
+    pass
+
 ArgUnpackTypes = Enum('ArgUnpackTypes', 'args kwargs none')
 UnaryOpType = Enum('UnaryOp', 'UAdd Invert USub Not')
 BoolOpType = Enum('BoolOp', 'And Or')
+
 OperatorType = Enum('Operator', 'Add Div Sub Mod Pow Mult MatMult RShift LShift BitOr BitXOr BitAnd FloorDiv')
+Add = make_ast_node('Add', parent=OperatorNode)
+Div = make_ast_node('Div', parent=OperatorNode)
+Sub = make_ast_node('Sub', parent=OperatorNode)
+Mod = make_ast_node('Mod', parent=OperatorNode)
+Pow = make_ast_node('Pow', parent=OperatorNode)
+Mult = make_ast_node('Mult', parent=OperatorNode)
+MatMult = make_ast_node('MatMult', parent=OperatorNode)
+RShift = make_ast_node('RShift', parent=OperatorNode)
+LShift = make_ast_node('LShift', parent=OperatorNode)
+BitOr = make_ast_node('BitOr', parent=OperatorNode)
+BitXOr = make_ast_node('BitXOr', parent=OperatorNode)
+BitAnd = make_ast_node('BitAnd', parent=OperatorNode)
+FloorDiv = make_ast_node('FloorDiv', parent=OperatorNode)
+
 ComparisonOpType = Enum('ComparisonOp', 'Eq NotEq Lt LtE Gt GtE Is IsNot In NotIn')
 
 Comprehension = make_ast_node('Comprehension', 'target iter ifs')
