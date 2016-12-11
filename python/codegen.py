@@ -77,6 +77,8 @@ class SourceGenerator(NodeVisitor):
     """
 
     def __init__(self, indent_with, add_line_information=False):
+        if add_line_information:
+            raise NotImplementedError("Line information is currently not supported")
         self.result = []
         self.indent_with = indent_with
         self.add_line_information = add_line_information
@@ -230,20 +232,12 @@ class SourceGenerator(NodeVisitor):
         for base in node.bases:
             paren_or_comma()
             self.visit(base)
-        # XXX: the if here is used to keep this module compatible
-        #      with python 2.6.
+
         if hasattr(node, 'keywords'):
             for keyword in node.keywords:
                 paren_or_comma()
                 self.visit(keyword)
-            # if node.starargs is not None:
-            #     paren_or_comma()
-            #     self.write('*')
-            #     self.visit(node.starargs)
-            # if node.kwargs is not None:
-            #     paren_or_comma()
-            #     self.write('**')
-            #     self.visit(node.kwargs)
+
         self.write(have_args and '):' or ':')
         self.body(node.body)
 
@@ -299,23 +293,6 @@ class SourceGenerator(NodeVisitor):
     def visit_Pass(self, node):
         self.newline(node)
         self.write('pass')
-
-    def visit_Print(self, node):
-        # XXX: python 2.6 only
-        self.newline(node)
-        self.write('print ')
-        want_comma = False
-        if node.dest is not None:
-            self.write(' >> ')
-            self.visit(node.dest)
-            want_comma = True
-        for value in node.values:
-            if want_comma:
-                self.write(', ')
-            self.visit(value)
-            want_comma = True
-        if not node.nl:
-            self.write(',')
 
     def visit_Delete(self, node):
         self.newline(node)

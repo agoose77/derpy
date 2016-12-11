@@ -7,4 +7,4 @@ except StopIteration as err:
 else:
     pass
 finally:
-    pass
+    print("HI")
