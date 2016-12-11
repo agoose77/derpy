@@ -261,7 +261,7 @@ def emit_try_except_else_finally(args):
             type_ = opt_alias.name
             name = opt_alias.asname
 
-        except_handlers_list.append(ast.ExceptHandler(type_, name, body))
+        except_handlers_list.append(ast.excepthandler(type_, name, body))
 
     except_handlers = tuple(except_handlers_list)
 

@@ -174,7 +174,7 @@ In = comparison.subclass('In')
 NotIn = comparison.subclass('NotIn')
 
 comprehension = AST.subclass('comprehension', 'target iter ifs')
-ExceptHandler = AST.subclass('ExceptHandler', 'type name body')
+excepthandler = AST.subclass('excepthandler', 'type name body')
 
 arguments = AST.subclass('arguments', 'args vararg kwonlyargs kw_defaults kwarg defaults')
 arg = AST.subclass('arg', 'arg annotation')
