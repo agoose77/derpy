@@ -103,7 +103,7 @@ def emit_func_def(args):
         _, returns = ret_type
 
     if params == '':
-        params = ()
+        params = ast.arguments(args=(), vararg=None, kwonlyargs=(), kw_defaults=(), kwarg=None, defaults=())
 
     return ast.FunctionDef(name, params, body, decorators, returns)
 
@@ -246,8 +246,49 @@ def emit_with_item(args):
     _, expr = opt_as
     return ast.alias(test, expr)
 
+def emit_try_except_else_finally(args):
+    excepts_and_bodies, opt_else_raw, opt_finally_raw = unpack_n(args, 3)
+
+    except_handlers_list = []
+
+    for element in excepts_and_bodies:
+        clause, _, body = unpack_n(element, 3)
+        _, opt_alias = clause
+
+        type_ = None
+        name = None
+        if opt_alias != '':
+            type_ = opt_alias.name
+            name = opt_alias.asname
+
+        except_handlers_list.append(ast.ExceptHandler(type_, name, body))
+
+    except_handlers = tuple(except_handlers_list)
+
+    if opt_else_raw == '':
+        orelse = ()
+    else:
+        _, _, orelse = unpack_n(opt_else_raw, 3)
+
+    if opt_finally_raw == '':
+        finalbody = ()
+    else:
+        _, _, finalbody = unpack_n(opt_finally_raw, 3)
+
+    return ast.tryexceptelsefinally(except_handlers, orelse, finalbody)
+
+def emit_try_finally(args):
+    _, _, body = unpack_n(args, 3)
+
+    return ast.tryfinally(body)
+
 def emit_try(args):
     _, _, body, following = unpack_n(args, 4)
+    #Try = stmt.subclass('Try', 'body handlers orelse finalbody')
+    if isinstance(following, ast.tryexceptelsefinally):
+        return ast.Try(body, following.handlers, following.orelse, following.finalbody)
+    return ast.Try(body, (), (), following.finalbody)
+
     raise NotImplemented
 
 def emit_raise(args):
@@ -558,17 +599,26 @@ def emit_nl_indented(args):
     _, _, list_of_stmts, _ = unpack_n(args, 4)
     stmts = []
     for n in list_of_stmts:
-        if isinstance(n, tuple):
-            stmts.extend(n)
-        else:
+        if isinstance(n, ast.AST):
             stmts.append(n)
+        else:
+            stmts.extend(n)
     return tuple(stmts)
 
+#g.file_input = (+(ter('NEWLINE') | g.stmt) & ter('ENDMARKER')) >> emit_file_input
 def emit_file_input(args):
-    nl_or_stmts, _ = args
-    if nl_or_stmts == '':
+    many_stmts, _ = args
+    if many_stmts == '':
         return ()
-    return ast.Module(nl_or_stmts)
+
+    flattened_stmts = []
+    for stmt_or_stmts in many_stmts:
+        if stmt_or_stmts == "" or isinstance(stmt_or_stmts, ast.AST): # TODO why is this never hit?
+            flattened_stmts.append(stmt_or_stmts)
+        else:
+            flattened_stmts.extend(stmt_or_stmts)
+
+    return ast.Module(tuple(flattened_stmts))
 
 def split_args_list_to_arg_kwargs(arg_list):
     args = []
@@ -816,6 +866,11 @@ def emit_slice(args):
 
     return ast.Slice(opt_test, opt_test2, opt_test3)
 
+def emit_simple_stmt_suite(stmt_or_stmts):
+    if isinstance(stmt_or_stmts, ast.AST):
+        return stmt_or_stmts,
+    return stmt_or_stmts
+
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
@@ -846,7 +901,7 @@ g.vfpdef = ter('ID')
 
 g.stmt = g.simple_stmt | g.compound_stmt
 
-g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt
+g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt # Single line multistmts emit tuple, others emit ast nodes
 g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
 g.expr_stmt = (g.test_list_star_expr & g.augassign & (g.yield_expr | g.test_list)) >> emit_expr_augassign | \
               (g.test_list_star_expr & +(ter('=') & (g.yield_expr | g.test_list_star_expr))) >> emit_expr_assigns
@@ -884,15 +939,16 @@ g.for_stmt = (ter('for') & g.expr_list & ter('in') & g.test_list & ter(':') & g.
 g.try_stmt = (ter('try') & ter(':') & g.suite &
              ((one_plus(g.except_clause & ter(':') & g.suite) &
                ~(ter('else') & ter(':') & g.suite) &
-               ~(ter('finally') & ter(':') & g.suite)) |
+               ~(ter('finally') & ter(':') & g.suite)) >> emit_try_except_else_finally |
               # Just finally no except
-              (ter('finally') & ter(':') & g.suite)
+              (ter('finally') & ter(':') & g.suite) >> emit_try_finally
               )) >> emit_try
 g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite) >> emit_with
 
-g.with_item = (g.test & ~(ter('as') & g.expr)) >> emit_with_item
-g.except_clause = ter('except') & ~(g.test & ~(ter('as') & ter('ID')))
-g.suite = g.simple_stmt | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter('DEDENT')) >> emit_nl_indented
+g.with_item = (g.test & ~(ter('as') & g.expr)) >> emit_alias
+g.except_clause = ter('except') & ~((g.test & ~(ter('as') & ter('ID'))) >> emit_alias)
+
+g.suite = g.simple_stmt >> emit_simple_stmt_suite | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter('DEDENT')) >> emit_nl_indented # Always emit flat tuple of nodes
 g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) >> emit_test_left | g.lambda_def
 g.test_no_cond = g.or_test | g.lambda_def_no_cond
 

@@ -174,7 +174,7 @@ In = comparison.subclass('In')
 NotIn = comparison.subclass('NotIn')
 
 comprehension = AST.subclass('comprehension', 'target iter ifs')
-excepthandler = AST.subclass('excepthandler', 'type name body')
+ExceptHandler = AST.subclass('ExceptHandler', 'type name body')
 
 arguments = AST.subclass('arguments', 'args vararg kwonlyargs kw_defaults kwarg defaults')
 arg = AST.subclass('arg', 'arg annotation')
@@ -189,7 +189,8 @@ compfor = AST.subclass('compfor', 'exprs or_test iterable')
 compif = AST.subclass('compif', 'cond opt')
 importfrommodule = AST.subclass('importfrommodule', 'level module')
 importfromsubmodules = AST.subclass('importfromsubmodules', 'aliases')
-
+tryexceptelsefinally = AST.subclass('tryexceptelsefinally', 'handlers orelse finalbody')
+tryfinally = AST.subclass('tryfinally', 'finalbody')
 
 def red(text):
     return '\x1b[0;31;m' + text
