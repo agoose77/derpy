@@ -3,6 +3,7 @@ import token
 import tokenize
 from keyword import iskeyword
 from io import StringIO
+from itertools import chain
 
 from derp import Token, ter, Recurrence, BaseParser, one_plus
 from derp.utilities import unpack_n
@@ -123,20 +124,9 @@ def emit_pass(args):
 def emit_continue(args):
     return ast.Continue()
 
-def emit_import_as_name(args):
-    id_, opt = args
-    if opt == '':
-        alias = None
-    else:
-        _, alias = opt
-    return ast.alias(id_, alias)
-
 def emit_import_from_dotted_name(args):
-    many_dots, dotted_name = args
+    many_dots, module = args
     level = sum(map(len, many_dots))
-
-    first_name, remainder = dotted_name
-    module = first_name + ''.join(s for p in remainder for s in p)
     return ast.importfrommodule(level, module)
 
 def emit_import_from_no_name(args):
@@ -159,9 +149,20 @@ def emit_import_from_names(args):
 
     return ast.importfromsubmodules(aliases)
 
+def emit_dotted_as_names(args):
+    alias, remainder = unpack_n(args, 2)
+
+    if remainder == '':
+        aliases = alias,
+    else:
+        commas, following_aliases = zip(*remainder)
+        aliases = alias, + following_aliases
+
+    return aliases
+
 def emit_import_from_names_paren(args):
-    parent, name_args, paren = unpack_n(args, 3)
-    return emit_import_from_names(name_args)
+    _, name_args, _ = unpack_n(args, 3)
+    return name_args
 
 def emit_import_from(args):
     _, module, _, submodule = unpack_n(args, 4)
@@ -212,8 +213,8 @@ def emit_if(args):
         other_ifs = ()
 
     if else_ != '':
-        _, _, else_stmt = else_
-        other_ifs = other_ifs + (else_stmt,)
+        _, _, else_stmts = unpack_n(else_, 3)
+        other_ifs = other_ifs + else_stmts
 
     return ast.If(condition, body, other_ifs)
 
@@ -370,7 +371,8 @@ def emit_test_list_star_expr(args):
     test_or_star, opt_following_test_or_star, opt_trailing_comma = unpack_n(args, 3)
     if opt_following_test_or_star != '':
         _, exprs = zip(*opt_following_test_or_star)
-        return (test_or_star,) + exprs
+        all_exprs = (test_or_star,) + exprs
+        return ast.Tuple(all_exprs)
     return test_or_star
 
 def emit_test_list(args):
@@ -382,8 +384,7 @@ def emit_test_list(args):
 
 def emit_expr_augassign(args):
     test_list, augassign, yield_or_test_list = unpack_n(args, 3)
-    first_expr, *remainder = test_list
-    if remainder:
+    if isinstance(test_list, ast.Tuple):
         raise SyntaxError("Invalid multiple assignments for augassign")
 
     lit_to_op = {'+=': ast.Add,
@@ -396,9 +397,10 @@ def emit_expr_augassign(args):
                  '>>=': ast.RShift,
                  '|=': ast.BitOr,
                  '&=': ast.BitAnd,
-                 '^=': ast.BitXOr,
-                 '**=': ast.Pow}
-    return ast.AugAssign(first_expr, lit_to_op[augassign](), yield_or_test_list)
+                 '^=': ast.BitXor,
+                 '**=': ast.Pow,
+                 '%=': ast.Mod}
+    return ast.AugAssign(test_list, lit_to_op[augassign](), yield_or_test_list)
 
 def emit_or_test(args):
     and_test, or_and_tests = args
@@ -418,8 +420,8 @@ def emit_and_test(args):
         return not_test
 
     _, further_nots = zip(*and_not_tests)
-    return ast.BoolOp(ast.And(), (not_test,)+further_nots)
-
+    all_nots = (not_test,)+further_nots
+    return ast.BoolOp(ast.And(), all_nots)
 
 def emit_expr_assigns(args):
     test_list, assignments = args
@@ -512,7 +514,7 @@ def emit_term(args):
 
     left = factor
     for term_op, right in opt_terms:
-        left = ast.BinOp(left, op_table[term_op], right)
+        left = ast.BinOp(left, op_table[term_op](), right)
     return left
 
 def emit_factor(args):
@@ -537,6 +539,13 @@ def emit_arg_list(args):
     commas, following_args = zip(*opt_args)
     return (arg,) + following_args
 
+def emit_subscript_list(args):
+    subscript, opt_subscripts, opt_comma = unpack_n(args, 3)
+    if opt_subscripts == '':
+        return subscript
+    commas, following_subscripts = zip(*opt_subscripts)
+    return ast.Tuple((subscript,) + following_subscripts)
+
 def emit_kwargs(args):
     _, arg = args
     return ast.keyword(arg, None)
@@ -546,8 +555,14 @@ def emit_starred(args):
     return ast.Starred(arg)
 
 def emit_nl_indented(args):
-    _, _, stmts, _ = unpack_n(args, 4)
-    return stmts
+    _, _, list_of_stmts, _ = unpack_n(args, 4)
+    stmts = []
+    for n in list_of_stmts:
+        if isinstance(n, tuple):
+            stmts.extend(n)
+        else:
+            stmts.append(n)
+    return tuple(stmts)
 
 def emit_file_input(args):
     nl_or_stmts, _ = args
@@ -579,7 +594,9 @@ def emit_class_def(args):
 
 def emit_keyword(args):
     name, _, value = unpack_n(args, 3)
-    return ast.keyword(name, value)
+    if not isinstance(name, ast.Name):
+        raise SyntaxError()
+    return ast.keyword(name.id, value)
 
 def emit_arg(args):
     name, opt_comp_for = args
@@ -608,7 +625,9 @@ def emit_yield_expr(args):
     return ast.Yield(opt_arg)
 
 def emit_num(num):
-    return ast.Num(num)
+    as_float = float(num)
+    value = int(num) if as_float.is_integer() else as_float
+    return ast.Num(value)
 
 def emit_atom_expr(args):
     atom, trailers = args
@@ -629,7 +648,7 @@ def emit_expr_list(args):
         return root_expr
 
     commas, exprs = zip(*opt_com_del_exprs)
-    return exprs
+    return ast.Tuple((root_expr, ) + exprs)
 
 def emit_lit(lits):
     first, *remainder = lits
@@ -653,13 +672,15 @@ def emit_generator_comp(args):
     if body == '':
         return ast.Tuple(())
 
-    _, values = zip(*ast.iter_fields(body))
-    if isinstance(body, ast.List):
-        if len(values) == 1:
-            return values[0]
-        return ast.Tuple(*values)
+    if isinstance(body, ast.Yield):
+        return body
 
-    return ast.GeneratorExp(*values)
+    if isinstance(body, ast.List):
+        if len(body.elts) == 1:
+            return body.elts[0]
+        return ast.Tuple(body.elts)
+
+    return ast.GeneratorExp(body.elt, body.generators)
 
 def emit_trailer_call(args):
     _, body, _ = unpack_n(args, 3)
@@ -670,13 +691,7 @@ def emit_trailer_call(args):
     return ast.Call(None, arguments, keywords)
 
 def emit_trailer_subscript(args):
-    _, subscripts, _ = unpack_n(args, 3)
-    first, following, opt_comma = unpack_n(subscripts, 3)
-    if following != '':
-        commas, subscripts = zip(*following)
-    else:
-        subscripts = ()
-    all_subscripts = first, + subscripts
+    _, all_subscripts, _ = unpack_n(args, 3)
     return ast.Subscript(None, all_subscripts)
 
 def emit_trailer_attr(args):
@@ -697,18 +712,122 @@ def emit_set_maker(args):
         exprs = ()
     return ast.Set((left,)+exprs)
 
+def emit_test_list_comp(args):
+    test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr = args
+
+    if isinstance(comp_for_or_list_of_comma_test_or_stexpr, ast.compfor):
+        return ast.ListComp(test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr)
+
+    else:
+        exprs = (test_or_stexpr,) + comp_for_or_list_of_comma_test_or_stexpr
+        return ast.List(exprs)
+
+def emit_dict_comp(args):
+    _, body, _ = unpack_n(args, 3)
+    if body == '':
+        return ast.Dict((), ())
+    return body
+
+def emit_list_exprs(args):
+    list_exprs, opt_comma = args
+    if list_exprs == '':
+        return ()
+    commas, exprs = zip(*list_exprs)
+    return exprs
+
+def emit_dict_pair(args):
+    key, _, value = unpack_n(args, 3)
+    return ast.keyword(key, value)
+
+def emit_dict_kwargs(args):
+    _, value = args
+    return ast.keyword(None, value)
+
+def emit_dict_maker(args):
+    first, for_or_else = args
+
+    if isinstance(for_or_else, ast.compfor):
+        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test)
+        return ast.DictComp(first, comp)
+
+    # Unpack order is ((a,b), c) so in this branch the for_or_else is actually the comma
+    expr_list, trailing_comma = for_or_else
+    if expr_list != '':
+        commas, exprs = zip(*expr_list)
+    else:
+        exprs = ()
+
+    keys = [first.arg] + [e.arg for e in exprs]
+    values = [first.value] + [e.value for e in exprs]
+
+    return ast.Dict(tuple(keys), tuple(values))
+
+def emit_name_constant(name):
+    return ast.NameConstant(name)
+
+def emit_ellipsis(_):
+    return ast.Ellipsis_()
+
+def emit_decorated(args):
+    decorators, definition = args
+    def_dict = dict(ast.iter_fields(definition))
+    def_dict['decorator_list'] = decorators
+    new_definition = definition.__class__(**def_dict)
+    return new_definition
+
+def emit_decorator(args):
+    _, name_str,  opt_calls, _ = unpack_n(args, 4)
+
+    name = ast.Name(name_str)
+    if opt_calls == '':
+        return name
+
+    _, arg_list, _ = unpack_n(opt_calls, 3)
+    args, keywords = split_args_list_to_arg_kwargs(arg_list)
+    return ast.Call(name, args, keywords)
+
+def emit_dotted_name(args):
+    first, remainder = args
+    if remainder == '':
+        return first
+
+    return first + ''.join(s for p in remainder for s in p)
+
+def emit_alias(args):
+    name, opt_alias = args
+    if opt_alias == '':
+        return ast.alias(name, None)
+    _, alias = opt_alias
+    return ast.alias(name, alias)
+
+def emit_slice(args):
+    opt_test, _, opt_test2, opt_slice_op = unpack_n(args, 4)
+    if opt_test == '':
+        opt_test = None
+
+    if opt_test2 == '':
+        opt_test2 = None
+
+    opt_test3 = None
+    if opt_slice_op != '':
+        _, _test3 = opt_slice_op
+        if _test3 != '':
+            opt_test3 = _test3
+
+    return ast.Slice(opt_test, opt_test2, opt_test3)
+
 g = GrammarFactory()
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
 # g.eval_input = g.test_list & +ter('NEWLINE') & ter('ENDMARKER')
 g.file_input = (+(ter('NEWLINE') | g.stmt) & ter('ENDMARKER')) >> emit_file_input
 
-g.decorator = ter('@') & g.dotted_name & ~(ter('(') & ~g.arg_list & ter(')')) & ter('NEWLINE')
+g.decorator = (ter('@') & g.dotted_name & ~(ter('(') & ~g.arg_list & ter(')')) & ter('NEWLINE')) >> emit_decorator
 g.decorators = one_plus(g.decorator)
-g.decorated = g.decorators & (g.class_def | g.func_def)  # Ignore async
+
+g.decorated = (g.decorators & (g.class_def | g.func_def)) >> emit_decorated# Ignore async
 
 g.func_def = (ter('def') & ter('ID') & g.parameters & ~(ter('->') & g.test) & ter(':') & g.suite) >> emit_func_def
-
 
 def generate_args_list(tfpdef):
     tfpdef_opt_ass = tfpdef & ~(ter('=') & g.test)
@@ -725,7 +844,6 @@ g.tfpdef = (ter('ID') & ~(ter(':') & g.test)) >> emit_tfpdef
 g.var_args_list = generate_args_list(g.vfpdef)
 g.vfpdef = ter('ID')
 
-# TODO how to discern between lists and single values
 g.stmt = g.simple_stmt | g.compound_stmt
 
 g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt
@@ -733,7 +851,7 @@ g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_
 g.expr_stmt = (g.test_list_star_expr & g.augassign & (g.yield_expr | g.test_list)) >> emit_expr_augassign | \
               (g.test_list_star_expr & +(ter('=') & (g.yield_expr | g.test_list_star_expr))) >> emit_expr_assigns
 g.test_list_star_expr = ((g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(',')) >> emit_test_list_star_expr
-g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') | ter('^=') \
+g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') \
               | ter('<<=') | ter('>>=') | ter('**=') | ter('//=') | ter('@=')
 g.del_stmt = ter('del') & g.expr_list >> emit_del
 g.pass_stmt = ter('pass') >> emit_pass
@@ -747,16 +865,14 @@ g.raise_stmt = (ter('raise') & ~(g.test & ~(ter('from') & g.test))) >> emit_rais
 g.import_stmt = g.import_name | g.import_from
 g.import_name = (ter('import') & g.dotted_as_names) >> emit_import
 g.import_from = (ter('from') &
-                 ((+(ter('.') | ter('...')) & g.dotted_name) >> emit_import_from_dotted_name
-                                | one_plus(ter('.') | ter('...')) >> emit_import_from_no_name
-                                )
-                 & ter('import') &
-                 (ter('*') >> emit_import_from_all | (ter('(') & g.import_as_names & ter(')')) >> emit_import_from_names_paren | g.import_as_names >> emit_import_from_names)) >> emit_import_from
-g.import_as_name = (ter('ID') & ~(ter('as') & ter('ID'))) >> emit_import_as_name
-g.import_as_names = g.import_as_name & +(ter(',') & g.import_as_name) & ~ter(',')
-g.dotted_name = ter('ID') & +(ter('.') & ter('ID'))
-g.dotted_as_name = g.dotted_name & ~(ter('as') & ter('ID'))
-g.dotted_as_names = g.dotted_as_name & +(ter(',') & g.dotted_as_name)
+                 ((+(ter('.') | ter('...')) & g.dotted_name) >> emit_import_from_dotted_name | one_plus(ter('.') | ter('...')) >> emit_import_from_no_name)
+                 & ter('import') & (ter('*') >> emit_import_from_all | (ter('(') & g.import_as_names & ter(')')) >> emit_import_from_names_paren | g.import_as_names)) >> emit_import_from
+g.import_as_name = (ter('ID') & ~(ter('as') & ter('ID'))) >> emit_alias
+g.import_as_names = (g.import_as_name & +(ter(',') & g.import_as_name) & ~ter(',')) >> emit_import_from_names
+g.dotted_name = (ter('ID') & +(ter('.') & ter('ID'))) >> emit_dotted_name
+
+g.dotted_as_name = (g.dotted_name & ~(ter('as') & ter('ID'))) >> emit_alias
+g.dotted_as_names = (g.dotted_as_name & +(ter(',') & g.dotted_as_name)) >> emit_dotted_as_names
 g.global_stmt = (ter('global') & ter('ID') & +(ter(',') & ter('ID'))) >> emit_global
 g.nonlocal_stmt = (ter('nonlocal') & ter('ID') & +(ter(',') & ter('ID'))) >> emit_nonlocal
 g.assert_stmt = (ter('assert') & g.test & ~(ter(',') & g.test)) >> emit_assert
@@ -800,80 +916,29 @@ g.term = (g.factor & +((ter('*') | ter('@') | ter('/') | ter('%') | ter('//')) &
 g.factor = ((ter('+') | ter('-') | ter('~')) & g.factor) >> emit_factor | g.power
 g.power = (g.atom_expr & ~(ter('**') & g.factor)) >> emit_power
 
-
-def emit_test_list_comp(args):
-    test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr = args
-
-    if isinstance(comp_for_or_list_of_comma_test_or_stexpr, ast.compfor):
-        return ast.ListComp(test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr)
-
-    else:
-        exprs = (test_or_stexpr,) + comp_for_or_list_of_comma_test_or_stexpr
-        return ast.List(exprs)
-
-def emit_dict_comp(args):
-    _, body, _ = unpack_n(args, 3)
-    if body == '':
-        return ast.Dict((), ())
-    return body
-
 g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
 g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) >> emit_generator_comp |
           (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) >> emit_list_comp |
           (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict_comp |
-          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) >> emit_lit | ter('...') | ter('None') | ter('True') | ter('False'))
-
-def emit_list_exprs(args):
-    list_exprs, opt_comma = args
-    if list_exprs == '':
-        return ()
-    commas, exprs = zip(*list_exprs)
-    return exprs
-
+          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) >> emit_lit | ter('...') >> emit_ellipsis |
+          ter('None') >> emit_name_constant | ter('True') >> emit_name_constant | ter('False') >> emit_name_constant)
 
 g.test_list_comp = ((g.test | g.star_expr) & (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))>> emit_list_exprs)) >> emit_test_list_comp
 g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_trailer_call | \
             (ter('[') & g.subscript_list & ter(']')) >> emit_trailer_subscript | \
             (ter('.') & ter('ID')) >> emit_trailer_attr
 g.arg_list = (g.argument & +(ter(',') & g.argument) & ~ter(',')) >> emit_arg_list
-g.subscript_list = g.subscript & +(ter(',') & g.subscript) & ~ter(',')
-g.subscript = g.test | (~g.test & ter(':') & ~g.test & ~g.slice_op)
+g.subscript_list = (g.subscript & +(ter(',') & g.subscript) & ~ter(',')) >> emit_subscript_list
+
+g.subscript = g.test | (~g.test & ter(':') & ~g.test & ~g.slice_op) >> emit_slice
 g.slice_op = ter(':') & ~g.test
 g.expr_list = ((g.expr | g.star_expr) & +(ter(',') & (g.expr | g.star_expr)) & ~ter(',')) >> emit_expr_list
 g.test_list = (g.test & +(ter(',') & g.test) & ~ter(',')) >> emit_test_list
-
-def emit_dict_pair(args):
-    key, _, value = unpack_n(args, 3)
-    return ast.keyword(key, value)
-
-def emit_dict_kwargs(args):
-    _, value = args
-    return ast.keyword(None, value)
-
-def emit_dict_maker(args):
-    first, for_or_else = args
-
-    if isinstance(for_or_else, ast.compfor):
-        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test)
-        return ast.DictComp(first, comp)
-
-    # Unpack order is ((a,b), c) so in this branch the for_or_else is actually the comma
-    expr_list, trailing_comma = for_or_else
-    if expr_list != '':
-        commas, exprs = zip(*expr_list)
-    else:
-        exprs = ()
-
-    keys = [first.arg] + [e.arg for e in exprs]
-    values = [first.value] + [e.value for e in exprs]
-
-    return ast.Dict(tuple(keys), tuple(values))
 
 g.dict_or_set_maker = (
     (((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs) & (g.comp_for | (+(ter (',') & ((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs)) & ~ter(',')))) >> emit_dict_maker |
     ((g.test | g.star_expr) & (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(',')))) >> emit_set_maker
 )
-
 
 g.argument = ((g.test & ~g.comp_for) >> emit_arg |
               (g.test & ter('=') & g.test) >> emit_keyword |

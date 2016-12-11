@@ -20,6 +20,5 @@ if __name__ == "__main__":
 
     else:
         module = result.pop()
-        print('parse', module)
-        #module.body[0].names += (ast.Ellipsis_(),)
         ast.print_ast(module, format_func=ast.cyclic_colour_formatter)#ast.highlight_node_formatter(ast.alias, ast.green, ast.blue))
+

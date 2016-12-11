@@ -300,6 +300,7 @@ class Recurrence(Delayable):
 
 @with_fields('parser', 'func')
 class Reduce(Delayable):
+
     def compact(self, seen):
         if self not in seen:
             seen.add(self)

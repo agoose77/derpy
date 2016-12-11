@@ -66,17 +66,17 @@ Expression = mod.subclass('Expression', 'body')
 
 ### Statements ##############################################
 stmt = AST.subclass('stmt')
-ClassDef = stmt.subclass('ClassDef', 'name bases keywords body decorators')
-FuncDef = stmt.subclass('FuncDef', 'name args body decorators returns')
+ClassDef = stmt.subclass('ClassDef', 'name bases keywords body decorator_list')
+FunctionDef = stmt.subclass('FunctionDef', 'name args body decorator_list returns')
 Return = stmt.subclass('Return', 'value')
 
 Delete = stmt.subclass('Delete', 'targets')
 Assign = stmt.subclass('Assign', 'targets value')
-AugAssign = stmt.subclass('Augassign', 'target op value')
+AugAssign = stmt.subclass('AugAssign', 'target op value')
 
-For = stmt.subclass('For', 'target iter body or_else')
-While = stmt.subclass('While', 'test body or_else')
-If = stmt.subclass('If', 'test body or_else')
+For = stmt.subclass('For', 'target iter body orelse')
+While = stmt.subclass('While', 'test body orelse')
+If = stmt.subclass('If', 'test body orelse')
 With = stmt.subclass('With', 'items body')
 
 Raise = stmt.subclass('Raise', 'exc cause')
@@ -96,7 +96,7 @@ Continue = stmt.subclass('Continue', '')
 
 ### Expressions #############################################
 expr = AST.subclass('expr')
-BoolOp = expr.subclass('BoolOp', 'values')
+BoolOp = expr.subclass('BoolOp', 'op values')
 BinOp = expr.subclass('BinOp', 'left op right')
 UnaryOp = expr.subclass('UnaryOp', 'op operand')
 LambdaDef = expr.subclass('LambdaDef', 'args body')
@@ -108,13 +108,13 @@ SetComp = expr.subclass('SetComp', 'elt generators')
 DictComp = expr.subclass('DictComp', 'key value generators')
 GeneratorExp = expr.subclass('GeneratorExp', 'elt generators')
 # the grammar constrains where yield expressions can occur
-Yield = expr.subclass('Yield', 'expr')
-YieldFrom = expr.subclass('YieldFrom', 'expr')
+Yield = expr.subclass('Yield', 'value')
+YieldFrom = expr.subclass('YieldFrom', 'value')
 # need sequences for compare to distinguish between
 # x < 4 < 3 and (x < 4) < 3
 Compare = expr.subclass('Compare', 'left ops comparators')
 Call = expr.subclass('Call', 'func args keywords')
-Num = expr.subclass('Num', 'value')
+Num = expr.subclass('Num', 'n')
 Str = expr.subclass('Str', 's')
 Bytes = expr.subclass('Bytes', 's')
 NameConstant = expr.subclass('NameConstant', 'value')
@@ -125,7 +125,7 @@ Attribute = expr.subclass('Attribute', 'value attr')
 Subscript = expr.subclass('Subscript', 'value slice')
 Starred = expr.subclass('Starred', 'value')
 Name = expr.subclass('Name', 'id')
-List = expr.subclass('List', 'values')
+List = expr.subclass('List', 'elts')
 Tuple = expr.subclass('Tuple', 'elts')
 #############################################################
 
@@ -151,7 +151,7 @@ MatMult = operator.subclass('MatMult')
 RShift = operator.subclass('RShift')
 LShift = operator.subclass('LShift')
 BitOr = operator.subclass('BitOr')
-BitXOr = operator.subclass('BitXOr')
+BitXor = operator.subclass('BitXOr')
 BitAnd = operator.subclass('BitAnd')
 FloorDiv = operator.subclass('FloorDiv')
 
