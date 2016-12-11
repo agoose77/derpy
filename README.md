@@ -21,8 +21,8 @@ P represents a parser (e.g S above)
 * `+P` Regex *, 0 or more
 * `~P` Optional
 * `P >> f` Reduction (call f with result of parser)
-* `|` Or (alternative)
-* `&` And (concat / sequence)
+* `|` Alternative (logical or)
+* `&` Concatenate (logical and)
 
 ## Helpers
 * `one_of(P)` returns a tuple of 1+ matches of P
