@@ -207,16 +207,19 @@ def emit_return(args):
 def emit_if(args):
     _, condition, _, body, elifs, else_ = unpack_n(args, 6)
 
-    if elifs != '':
-        other_ifs = tuple([ast.If(else_condition, else_body) for _, else_condition, _, else_body in elifs])
+    # Unpack the else statements
+    if else_ == '':
+        orelse = ()
     else:
-        other_ifs = ()
+        _, _, orelse = unpack_n(else_, 3)
 
-    if else_ != '':
-        _, _, else_stmts = unpack_n(else_, 3)
-        other_ifs = other_ifs + else_stmts
+    # Now deal with elifs
+    if elifs != '':
+        for elem in reversed(elifs):
+            _, else_condition, _, else_body = unpack_n(elem, 4)
+            orelse = ast.If(else_condition, else_body, orelse),
 
-    return ast.If(condition, body, other_ifs)
+    return ast.If(condition, body, orelse)
 
 def emit_while(args):
     _, condition, _, body, else_ = unpack_n(args, 5)
@@ -566,7 +569,7 @@ def emit_power(args):
     if opt_factor == '':
         return atom
     _, exponent = opt_factor
-    return ast.BinOp(atom, ast.Pow, exponent)
+    return ast.BinOp(atom, ast.Pow(), exponent)
 
 def emit_id(value):
     return ast.Name(value)
