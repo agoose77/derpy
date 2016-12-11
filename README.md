@@ -14,8 +14,6 @@ s.parser = epsilon | (1 & s)
 ```
 
 This parser could parse any number of ones, before terminating.
-
-A Python parser example can be found in python.py. It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar.
 Infix notation (+, >>, ~, &, |) is defined on each parser to make the process of writing a grammar less verbose and simpler to read.
 
 ## Infix notation
@@ -32,3 +30,7 @@ P represents a parser (e.g S above)
 * `optional(P)` functional name for `~P` (optional)
 * `ter(c)` returns parser to match a token with the first attribute string equal to c.
 * `to_text(P, max_depth=None)` returns text representation of parser. Optionally limited to depth N
+
+## Python Grammar Parsing
+A Python parser example can be found in the python module. It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar.
+Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested using an existing ast to code utility, simply replacing the import).
