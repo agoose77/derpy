@@ -289,8 +289,6 @@ def emit_try(args):
         return ast.Try(body, following.handlers, following.orelse, following.finalbody)
     return ast.Try(body, (), (), following.finalbody)
 
-    raise NotImplemented
-
 def emit_raise(args):
     _, opt_exc = args
     if opt_exc == '':
@@ -676,7 +674,7 @@ def emit_yield_expr(args):
 
 def emit_num(num):
     as_float = float(num)
-    value = int(num) if as_float.is_integer() else as_float
+    value = int(as_float) if as_float.is_integer() else as_float
     return ast.Num(value)
 
 def emit_atom_expr(args):
