@@ -7,5 +7,7 @@ Block = AST.subclass('Block')
 
 AttrDef = AST.subclass("AttrDef", "type name default optional")
 EnumAttrDef = AttrDef.subclass("EnumAttrDef", "type name options default optional")
-ValidateDef = Block.subclass('ValidateDef', 'body')
-FormDef = Block.subclass('FormDef', 'body')
+
+PythonBlock = Block.subclass('PythonBlock')
+ValidateDef = PythonBlock.subclass('ValidateDef', 'body')
+FormDef = PythonBlock.subclass('FormDef', 'body')

@@ -763,7 +763,7 @@ def emit_trailer_attr(args):
 def emit_set_maker(args):
     left, for_or_else = args
     if isinstance(for_or_else, ast.compfor):
-        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test)
+        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test),
         return ast.SetComp(left, comp)
 
     # Unpack order is ((a,b), c) so in this branch the for_or_else is actually the comma
@@ -778,7 +778,10 @@ def emit_test_list_comp(args):
     test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr = args
 
     if isinstance(comp_for_or_list_of_comma_test_or_stexpr, ast.compfor):
-        return ast.ListComp(test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr)
+        comp = ast.comprehension(comp_for_or_list_of_comma_test_or_stexpr.exprs,
+                                 comp_for_or_list_of_comma_test_or_stexpr.iterable,
+                                 comp_for_or_list_of_comma_test_or_stexpr.or_test),
+        return ast.ListComp(test_or_stexpr, comp)
 
     else:
         exprs = (test_or_stexpr,) + comp_for_or_list_of_comma_test_or_stexpr
@@ -809,7 +812,7 @@ def emit_dict_maker(args):
     first, for_or_else = args
 
     if isinstance(for_or_else, ast.compfor):
-        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test)
+        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test),
         return ast.DictComp(first, comp)
 
     # Unpack order is ((a,b), c) so in this branch the for_or_else is actually the comma
@@ -912,6 +915,8 @@ g.var_args_list = generate_args_list(g.vfpdef)
 g.vfpdef = ter('ID')
 
 g.stmt = g.simple_stmt | g.compound_stmt
+
+# TODO fix nested generators
 
 g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt # Single line multistmts emit tuple, others emit ast nodes
 g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
