@@ -25,4 +25,5 @@ if __name__ == "__main__":
         ast.print_ast(module, format_func=ast.cyclic_colour_formatter)#ast.highlight_node_formatter(ast.alias, ast.green, ast.blue))
 
         source = to_source(module)
-        print("Source:\n", source)
+        print("Source:")
+        print(source)

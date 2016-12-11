@@ -86,6 +86,7 @@ class SourceGenerator(NodeVisitor):
         self.new_lines = 0
 
     def write(self, x):
+        assert isinstance(x, str), x
         if self.new_lines:
             if self.result:
                 self.result.append('\n' * self.new_lines)
@@ -190,7 +191,7 @@ class SourceGenerator(NodeVisitor):
         for idx, item in enumerate(node.names):
             if idx:
                 self.write(', ')
-            self.write(item)
+            self.visit(item)
 
     def visit_Import(self, node):
         self.newline(node)
@@ -297,7 +298,7 @@ class SourceGenerator(NodeVisitor):
     def visit_Delete(self, node):
         self.newline(node)
         self.write('del ')
-        for idx, target in enumerate(node):
+        for idx, target in enumerate(node.targets):
             if idx:
                 self.write(', ')
             self.visit(target)

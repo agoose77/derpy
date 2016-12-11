@@ -131,7 +131,7 @@ Tuple = expr.subclass('Tuple', 'elts')
 
 ### Slices ##################################################
 slice = AST.subclass('slice')
-Slice = slice.subclass('Subscript', 'first second third')
+Slice = slice.subclass('Slice', 'lower upper step')
 ExtSlice = slice.subclass('ExitSubscript', 'dims')
 Index = slice.subclass('Index', 'value')
 #############################################################

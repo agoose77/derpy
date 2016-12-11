@@ -112,8 +112,10 @@ def emit_params(args):
     return typed_args
 
 def emit_del(args):
-    _, exprs = args
-    return ast.Delete(exprs)
+    _, targets = args
+    if isinstance(targets, ast.AST):
+        targets = targets,
+    return ast.Delete(targets)
 
 def emit_break(args):
     return ast.Break()
@@ -145,7 +147,7 @@ def emit_import_from_names(args):
         aliases = alias,
     else:
         commas, following_aliases = zip(*remainder)
-        aliases = alias, + following_aliases
+        aliases = (alias,) + following_aliases
 
     return ast.importfromsubmodules(aliases)
 
@@ -156,7 +158,7 @@ def emit_dotted_as_names(args):
         aliases = alias,
     else:
         commas, following_aliases = zip(*remainder)
-        aliases = alias, + following_aliases
+        aliases = (alias,) + following_aliases
 
     return aliases
 
@@ -202,6 +204,8 @@ def emit_lambda_def(args):
 
 def emit_return(args):
     _, test_list = args
+    if test_list == '':
+        return ast.Return(None)
     return ast.Return(test_list)
 
 def emit_if(args):
@@ -231,7 +235,11 @@ def emit_while(args):
 
 def emit_for(args):
     _, target, _, iterable, _, body, optelse = unpack_n(args, 7)
-    else_ = None if optelse == '' else optelse
+    else_ = () if optelse == '' else optelse
+
+    if isinstance(target, tuple):
+        target = ast.Tuple(target)
+
     return ast.For(target, iterable, body, else_)
 
 def emit_with(args):
@@ -660,6 +668,9 @@ def emit_comp_for(args):
     _, expr_list, _, or_test, opt = unpack_n(args, 5)
     if opt == '':
         opt = None
+
+    if isinstance(expr_list, tuple):
+        expr_list = ast.Tuple(expr_list)
     return ast.compfor(expr_list, or_test, opt)
 
 def emit_comp_if(args):
@@ -699,7 +710,7 @@ def emit_expr_list(args):
         return root_expr
 
     commas, exprs = zip(*opt_com_del_exprs)
-    return ast.Tuple((root_expr, ) + exprs)
+    return (root_expr, ) + exprs
 
 def emit_lit(lits):
     first, *remainder = lits
@@ -852,20 +863,20 @@ def emit_alias(args):
     return ast.alias(name, alias)
 
 def emit_slice(args):
-    opt_test, _, opt_test2, opt_slice_op = unpack_n(args, 4)
-    if opt_test == '':
-        opt_test = None
+    lower, _, upper, opt_slice_op = unpack_n(args, 4)
+    if lower == '':
+        lower = None
 
-    if opt_test2 == '':
-        opt_test2 = None
+    if upper == '':
+        upper = None
 
-    opt_test3 = None
+    step = None
     if opt_slice_op != '':
         _, _test3 = opt_slice_op
         if _test3 != '':
-            opt_test3 = _test3
+            step = _test3
 
-    return ast.Slice(opt_test, opt_test2, opt_test3)
+    return ast.Slice(lower, upper, step)
 
 def emit_simple_stmt_suite(stmt_or_stmts):
     if isinstance(stmt_or_stmts, ast.AST):
@@ -909,7 +920,7 @@ g.expr_stmt = (g.test_list_star_expr & g.augassign & (g.yield_expr | g.test_list
 g.test_list_star_expr = ((g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(',')) >> emit_test_list_star_expr
 g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') \
               | ter('<<=') | ter('>>=') | ter('**=') | ter('//=') | ter('@=')
-g.del_stmt = ter('del') & g.expr_list >> emit_del
+g.del_stmt = (ter('del') & g.expr_list) >> emit_del
 g.pass_stmt = ter('pass') >> emit_pass
 g.flow_stmt = g.break_stmt | g.continue_stmt | g.return_stmt | g.raise_stmt | g.yield_stmt
 g.break_stmt = ter('break') >> emit_break
