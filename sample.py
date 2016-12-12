@@ -1,2 +1,1 @@
-def write_ast(a=1, b=2):
-    pass
+(1 + 2, 3) = 3

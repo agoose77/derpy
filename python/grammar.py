@@ -9,8 +9,7 @@ from derp import Token, ter, Recurrence, BaseParser, one_plus
 from derp.utilities import unpack_n
 from . import ast
 
-
-# TODO support bytes vs string
+# TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
 
 
 def generate_parser_tokens(filename):
@@ -96,6 +95,7 @@ class GrammarFactory:
 def emit_func_def(args):
     _, name, params, ret_type, _, body = unpack_n(args, 6)
     decorators = ()
+
     if ret_type == '':
         returns = None
     else:
@@ -103,6 +103,11 @@ def emit_func_def(args):
 
     if params == '':
         params = ast.arguments(args=(), vararg=None, kwonlyargs=(), kw_defaults=(), kwarg=None, defaults=())
+
+    # Validate this here because incomplete parse branches might pass a partial argument list in this state this result
+    # to the arg list reduction functions (where a syntax error might be uncalled for, and break the parse)
+    if None in params.defaults:
+        raise SyntaxError("Non-keyword arg after keyword(s)")
 
     return ast.FunctionDef(name, params, body, decorators, returns)
 
@@ -655,7 +660,7 @@ def emit_starred(args):
     return ast.Starred(arg)
 
 
-def emit_nl_indented(args):
+def emit_nl_indent_one_plus_dedent_suite(args):
     _, _, list_of_stmts, _ = unpack_n(args, 4)
     stmts = []
     for n in list_of_stmts:
@@ -1082,7 +1087,7 @@ g.with_item = (g.test & ~(ter('as') & g.expr)) >> emit_alias
 g.except_clause = ter('except') & ~((g.test & ~(ter('as') & ter('ID'))) >> emit_alias)
 
 g.suite = g.simple_stmt >> emit_simple_stmt_suite | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter(
-    'DEDENT')) >> emit_nl_indented  # Always emit flat tuple of nodes
+    'DEDENT')) >> emit_nl_indent_one_plus_dedent_suite  # Always emit flat tuple of nodes
 g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) >> emit_test_left | g.lambda_def
 g.test_no_cond = g.or_test | g.lambda_def_no_cond
 
@@ -1110,11 +1115,12 @@ g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
 g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) >> emit_generator_comp |
           (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) >> emit_list_comp |
           (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict_comp |
-          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) >> emit_lit | ter('...') >> emit_ellipsis |
-          ter('None') >> emit_name_constant | ter('True') >> emit_name_constant | ter('False') >> emit_name_constant)
+          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) >> emit_lit |
+          ter('...') >> emit_ellipsis | ter('None') >> emit_name_constant | ter('True') >> emit_name_constant |
+          ter('False') >> emit_name_constant)
 
-g.test_list_comp = ((g.test | g.star_expr) & (
-    g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(',')) >> emit_list_exprs)) >> emit_test_list_comp
+g.test_list_comp = ((g.test | g.star_expr) & (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))
+                                              >> emit_list_exprs)) >> emit_test_list_comp
 g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_trailer_call | \
             (ter('[') & g.subscript_list & ter(']')) >> emit_trailer_subscript | \
             (ter('.') & ter('ID')) >> emit_trailer_attr
@@ -1130,7 +1136,8 @@ g.dict_or_set_maker = (
     (((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs) & (g.comp_for | (
     +(ter(',') & ((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs))
     & ~ter(',')))) >> emit_dict_maker | ((g.test | g.star_expr) &
-                                         (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(',')))) >> emit_set_maker
+                                         (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))))
+    >> emit_set_maker
 )
 
 g.argument = ((g.test & ~g.comp_for) >> emit_arg |
