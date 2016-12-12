@@ -21,7 +21,7 @@ Type AttractEasyPartnerInterface:
         nr_modes.name = "Number of harmonic modes to select"
         nr_modes.type = "option"
         nr_modes.options = list(range(0,10+1))
-        nr_modes.optiontitles = ["No modes"] + []#[str(v) for v in nr_modes.options[1:]]
+        nr_modes.optiontitles = ["No modes"] + [str(v) for v in nr_modes.options[1:]]
 
     ## validate if generate_modes: assert nr_modes >= 1 and nr_modes <= 10
 

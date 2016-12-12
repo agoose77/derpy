@@ -3,8 +3,7 @@ import token
 import tokenize
 from keyword import iskeyword
 from io import StringIO
-from itertools import chain
-
+from collections import deque
 from derp import Token, ter, Recurrence, BaseParser, one_plus
 from derp.utilities import unpack_n
 from . import ast
@@ -665,13 +664,14 @@ def emit_arg(args):
     return args
 
 def emit_comp_for(args):
-    _, expr_list, _, or_test, opt = unpack_n(args, 5)
-    if opt == '':
-        opt = None
+    _, expr_list, _, or_test, opt_if_or_for = unpack_n(args, 5)
+    if opt_if_or_for == '':
+        opt_if_or_for = None
 
     if isinstance(expr_list, tuple):
         expr_list = ast.Tuple(expr_list)
-    return ast.compfor(expr_list, or_test, opt)
+
+    return ast.compfor(expr_list, or_test, opt_if_or_for)
 
 def emit_comp_if(args):
     _, cond, opt = unpack_n(args, 3)
@@ -760,11 +760,35 @@ def emit_trailer_attr(args):
     _, ID = args
     return ast.Attribute(None, ID)
 
+def comprehensions_from_compfor(compfor):
+    comprehensions = deque()
+
+    # Go from root to tail
+    stack = deque()
+    while compfor:
+        stack.appendleft(compfor)
+        compfor = compfor.for_or_if
+
+    ifs = deque()
+
+    # Iterate from tail
+    for node in stack:
+        if isinstance(node, ast.compif):
+            ifs.appendleft(node.cond)
+
+        else:
+            assert isinstance(node, ast.compfor)
+            comprehension = ast.comprehension(node.exprs, node.iterable, tuple(ifs))
+            comprehensions.appendleft(comprehension)
+            ifs.clear()
+
+    return tuple(comprehensions)
+
 def emit_set_maker(args):
     left, for_or_else = args
     if isinstance(for_or_else, ast.compfor):
-        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test),
-        return ast.SetComp(left, comp)
+        comprehensions = comprehensions_from_compfor(for_or_else)
+        return ast.SetComp(left, comprehensions)
 
     # Unpack order is ((a,b), c) so in this branch the for_or_else is actually the comma
     expr_list, trailing_comma = for_or_else
@@ -778,10 +802,8 @@ def emit_test_list_comp(args):
     test_or_stexpr, comp_for_or_list_of_comma_test_or_stexpr = args
 
     if isinstance(comp_for_or_list_of_comma_test_or_stexpr, ast.compfor):
-        comp = ast.comprehension(comp_for_or_list_of_comma_test_or_stexpr.exprs,
-                                 comp_for_or_list_of_comma_test_or_stexpr.iterable,
-                                 comp_for_or_list_of_comma_test_or_stexpr.or_test),
-        return ast.ListComp(test_or_stexpr, comp)
+        comprehensions = comprehensions_from_compfor(comp_for_or_list_of_comma_test_or_stexpr)
+        return ast.ListComp(test_or_stexpr, comprehensions)
 
     else:
         exprs = (test_or_stexpr,) + comp_for_or_list_of_comma_test_or_stexpr
@@ -812,8 +834,8 @@ def emit_dict_maker(args):
     first, for_or_else = args
 
     if isinstance(for_or_else, ast.compfor):
-        comp = ast.comprehension(for_or_else.exprs, for_or_else.iterable, for_or_else.or_test),
-        return ast.DictComp(first, comp)
+        comprehensions = comprehensions_from_compfor(for_or_else)
+        return ast.DictComp(first, comprehensions)
 
     # Unpack order is ((a,b), c) so in this branch the for_or_else is actually the comma
     expr_list, trailing_comma = for_or_else
@@ -915,8 +937,6 @@ g.var_args_list = generate_args_list(g.vfpdef)
 g.vfpdef = ter('ID')
 
 g.stmt = g.simple_stmt | g.compound_stmt
-
-# TODO fix nested generators
 
 g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt # Single line multistmts emit tuple, others emit ast nodes
 g.small_stmt = (g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)

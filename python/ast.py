@@ -185,8 +185,8 @@ keyword = AST.subclass('keyword', 'arg value')# arg=None for **kwargs
 alias = AST.subclass('alias', 'name asname')
 withitem = AST.subclass('withitem', 'context_expr optional_vars')
 
-compfor = AST.subclass('compfor', 'exprs or_test iterable')
-compif = AST.subclass('compif', 'cond opt')
+compfor = AST.subclass('compfor', 'exprs iterable for_or_if')
+compif = AST.subclass('compif', 'cond for_or_if')
 importfrommodule = AST.subclass('importfrommodule', 'level module')
 importfromsubmodules = AST.subclass('importfromsubmodules', 'aliases')
 tryexceptelsefinally = AST.subclass('tryexceptelsefinally', 'handlers orelse finalbody')

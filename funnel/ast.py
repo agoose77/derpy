@@ -1,11 +1,11 @@
 from python.ast import AST
 
-
-TypeDef = AST.subclass("TypeDef", "name body")
 Funnel = AST.subclass("Funnel", "body")
-Block = AST.subclass('Block')
 
-AttrDef = AST.subclass("AttrDef", "type name default optional")
+Block = AST.subclass('Block')
+TypeDef = Block.subclass("TypeDef", "name body")
+
+AttrDef = Block.subclass("AttrDef", "type name default optional")
 EnumAttrDef = AttrDef.subclass("EnumAttrDef", "type name options default optional")
 
 PythonBlock = Block.subclass('PythonBlock')
