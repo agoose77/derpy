@@ -1,1 +1,2 @@
-l = [x for y in z for x in y if y > 1 if x < 2]
+def write_ast(a=1, b=2):
+    pass
