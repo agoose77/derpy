@@ -34,13 +34,17 @@ if __name__ == "__main__":
     root = result.pop()
     print_ast(root)
 
-    # Generate parsers from AST
-    generator = CustomParserGenerator('Demo BNF')
-    grammar = next(generator.visit(root))
-    grammar.ensure_parsers_defined()
-
-    # Tokenize expression
-    print("Parsing grammar sample: {} with {} tokens".format(args.filepath, len(tokens)))
-    sample_tokens = py_tokenize_file(args.sample)
-    result = parse(grammar.main & ter('NEWLINE') & ter('ENDMARKER'), sample_tokens)
-    print(result)
+    print("Built AST")
+    #
+    # # Generate parsers from AST
+    # generator = CustomParserGenerator('Demo BNF')
+    # grammar = next(generator.visit(root))
+    # grammar.ensure_parsers_defined()
+    #
+    # print("Built Grammar")
+    #
+    # # Tokenize expression
+    # print("Parsing grammar sample: {} with {} tokens".format(args.filepath, len(tokens)))
+    # sample_tokens = py_tokenize_file(args.sample)
+    # result = parse(grammar.main & ter('NEWLINE') & ter('ENDMARKER'), sample_tokens)
+    # print(result)

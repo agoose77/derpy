@@ -2,58 +2,89 @@ from collections import deque, OrderedDict
 from io import StringIO
 
 
-class AST:
-    """Base class for ast nodes"""
+_TUPLE_HASH = hash(())
 
-    _fields = ()
 
+AST_template = """
+class {name}(parent):
+
+    _fields = ({fields})
+    __slots__ = '_hash', {slots}
+
+    def __init__(self{init_args}):
+        self._hash = hash({hash})
+{init_body}
     def __hash__(self):
-        return hash(())
+        return self._hash
 
     def __repr__(self):
-        return "{}()".format(self.__class__.__name__)
-
-    def _to_dict(self):
-        return OrderedDict()
-
-    def __eq__(self, other):
-        if other.__class__ is not self.__class__:
-            return False
-
-        try:
-            return self._to_dict() == other._to_dict()
-
-        except AttributeError:
-            return False
+        return {repr}
 
     @classmethod
-    def subclass(cls, name, field_str=''):
-        fields = tuple(f.strip() for f in field_str.split(' ') if f.strip())
-        cls_dict = {'_fields': fields}
+    def subclass(cls, name, field_str='', module_name=__name__):
+        return _make_ast_node(name, field_str, cls, module_name)
+{property_body}
 
-        # Populate init, hash and repr methods
-        if fields:
-            body = "\n    ".join("self.{0} = {0}".format(name) for name in fields)
-            field_args = ", ".join(fields)
-            declare_init = "def __init__(self, {field_args}):\n    {body}"\
-                .format(field_args=field_args, body=body)
-            exec(declare_init, cls_dict)
+"""
 
-            values_str = ", ".join("self.{0}".format(name) for name in fields)
-            declare_hash ="def __hash__(self):\n    return hash(tuple(({values_str},)))".format(values_str=values_str)
-            exec(declare_hash, cls_dict)
+AST_property = \
+"""
+    @property
+    def {name}(self):
+        return self._{name}"""
 
-            formatter_str = ", ".join("self.{}".format(name) for name in fields)
-            dict_str = ", ".join("{}={{!r}}".format(name, getattr) for name in fields)
-            declare_repr ="def __repr__(self):\n    return '{}({})'.format({})".format(name, dict_str, formatter_str)
-            exec(declare_repr, cls_dict)
 
-            # Optimised _to_dict method
-            dict_str = ", ".join("({0!r}, self.{0})".format(name) for name in fields)
-            declare_as_dict = "def _to_dict(self):\n    return OrderedDict([{fields}])".format(fields=dict_str)
-            exec(declare_as_dict, globals(), cls_dict)
+AST_value_element = "self._{name}"
+AST_repr_element = "{name}={{!r}}"
+AST_field_init = "        self._{name} = {name}"
 
-        return type(name, (cls,), cls_dict)
+
+def _make_ast_node(name, field_str="", parent=None, module_name=__name__):
+    fields = tuple(f.strip() for f in field_str.split(' ') if f.strip())
+
+    if parent is None:
+        parent = object
+
+    else:
+        fields = parent._fields + fields
+
+    # Validation
+    assert len(set(fields)) == len(fields), "Duplicate field name given. Check parent class {}".format(parent)
+    assert all(f.isidentifier() for f in fields), "Non identifier field name given"
+
+    underscore_field_names_string = ", ".join((repr("_"+f) for f in fields))
+    field_names_string = ", ".join((repr(f) for f in fields))
+    field_names_string_trailer = (field_names_string + ",") if fields else ""
+
+    field_variables_string = ", ".join(fields)
+    field_variables_trailer = (", ".join(fields) + ("," if len(fields) == 1 else ""))
+
+    init_args = (", " + field_variables_string) if fields else ""
+    init_body = ("\n".join(AST_field_init.format(name=f) for f in fields) + "\n") if fields else ""
+    hash_string = "({})".format(field_variables_trailer)
+
+    repr_elements = (AST_repr_element.format(name=f) for f in fields)
+    repr_values = (AST_value_element.format(name=f) for f in fields)
+    repr_string = "'{name}({elements})'.format({values})"\
+        .format(name=name, elements=', '.join(repr_elements), values=', '.join(repr_values)) if fields else \
+        "'{}()'".format(name)
+
+    property_body = "\n".join(AST_property.format(name=n) for n in fields)
+
+    class_body = AST_template.format(name=name, base=parent, fields=field_names_string_trailer,
+                                     slots=underscore_field_names_string, init_args=init_args, init_body=init_body,
+                                     hash=hash_string, repr=repr_string, property_body=property_body)
+
+    local_dict = {'parent': parent}
+
+    global_dict = globals().copy()
+    global_dict['__name__'] = module_name
+
+    exec(class_body, global_dict, local_dict)
+    return local_dict[name]
+
+
+AST = _make_ast_node("AST", field_str="")
 
 
 class Colours:

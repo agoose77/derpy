@@ -101,7 +101,7 @@ class Delayable(BaseParser):
 
     @memoized
     def derive(self, token):
-        return self.__class__.Lazy(self, token)
+        return self.Lazy(self, token)
 
     @memoized
     def derive_null(self):
@@ -120,6 +120,7 @@ class Delayable(BaseParser):
 
 @with_fields('left', 'right')
 class Alternate(Delayable):
+
     def __new__(cls, left, right):
         if left is empty:
             return right
@@ -160,6 +161,7 @@ class Alternate(Delayable):
 
 @with_fields('left', 'right')
 class Concatenate(Delayable):
+
     def __new__(cls, left, right):
         if left is empty or right is empty:
             return empty
@@ -232,6 +234,7 @@ class Delta(InfixMixin):
 
 @with_fields()
 class _Empty(BaseParser):
+
     def derive(self, token):
         return empty
 
@@ -247,6 +250,7 @@ empty = _Empty()
 
 @with_fields('_trees')
 class Epsilon(BaseParser):
+
     @overwritable_property
     def simple_name(self):
         return "Epsilon({})".format(self._trees)
@@ -392,9 +396,13 @@ InfixMixin._optional = staticmethod(optional)
 
 
 def parse(parser, tokens):
+    from time import clock
+    s = clock()
     for token in tokens:
         parser = compact(parser.derive(token))
         if parser is empty:
+            break
+        if (clock() -s) > 30:
             break
     return parser.derive_null()
 

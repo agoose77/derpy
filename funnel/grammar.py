@@ -44,7 +44,7 @@ def emit_opt_attr_def(args):
         if typename != "Enum":
             raise SyntaxError
 
-        return ast.EnumAttrDef(typename, name, opt_options, None, True)
+        return ast.EnumAttrDef(typename, name, None, True, opt_options)
 
     return ast.AttrDef(typename, name, None, True)
 
@@ -61,7 +61,7 @@ def emit_default_attr_def(args):
         if typename != "Enum":
             raise SyntaxError
 
-        return ast.EnumAttrDef(typename, name, opt_options, value, False)
+        return ast.EnumAttrDef(typename, name, value, False, opt_options)
 
     return ast.AttrDef(typename, name, value, False)
 
