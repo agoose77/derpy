@@ -1,16 +1,29 @@
-from python.grammar import g, GrammarFactory, generate_parser_tokens as py_generate_parser_tokens, Token
+from python.grammar import g, Grammar, tokenize_readline as py_tokenize_readline, Token
 from . import ast
+from io import StringIO
 from derp import ter, one_plus
 from derp.utilities import unpack_n
 
 
-def generate_parser_tokens(filename):
+def tokenize_text(source):
+    string_io = StringIO(source + '\n')
+    return tokenize_readline(string_io.readline)
+
+
+def tokenize_file(filename):
+    with open(filename) as f:
+        string_io = StringIO(f.read() + '\n')
+    return tokenize_readline(string_io.readline)
+
+
+def tokenize_readline(readline):
     keywords = {'Type', 'form', 'validate'}
-    for token in py_generate_parser_tokens(filename):
+    for token in py_tokenize_readline(readline):
         if token.first == 'ID' and token.second in keywords:
             yield Token(token.second, token.second)
         else:
             yield token
+
 
 def emit_file_input(args):
     many_stmts, _ = args
@@ -90,7 +103,7 @@ def emit_validate(args):
     _, _, body = unpack_n(args, 3)
     return ast.ValidateDef(body)
 
-f = GrammarFactory()
+f = Grammar('Funnel')
 
 f.form = (ter('form') & ter(':') & g.suite) >> emit_form
 f.validate = (ter('validate') & ter(':') & g.suite) >> emit_validate

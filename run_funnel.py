@@ -1,11 +1,12 @@
 from argparse import ArgumentParser
 
 from funnel.grammar import f, generate_parser_tokens
-from python import ast as py_ast, codegen
+from python import codegen
 from derp import parse
+from derp.ast import print_ast, cyclic_colour_formatter, NodeVisitor, highlight_node_formatter
 
 
-class Block(py_ast.NodeVisitor):
+class Block(NodeVisitor):
 
     def visit_ValidateDef(self, node):
         print("Validate")
@@ -31,6 +32,6 @@ if __name__ == "__main__":
     else:
         module = result.pop()
         print(module)
-        py_ast.print_ast(module, format_func=py_ast.cyclic_colour_formatter)#ast.highlight_node_formatter(ast.alias, ast.green, ast.blue))
+        print_ast(module, format_func=cyclic_colour_formatter) #highlight_node_formatter(ast.alias, ast.green, ast.blue))
 
         Block().visit(module)

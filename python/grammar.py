@@ -7,16 +7,24 @@ from tokenize import generate_tokens
 
 from derp import Token, ter, Recurrence, BaseParser, one_plus
 from derp.utilities import unpack_n
+from derp.grammar import Grammar
 from . import ast
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
 
+def tokenize_text(source):
+    string_io = StringIO(source + '\n')
+    return tokenize_readline(string_io.readline)
 
-def generate_parser_tokens(filename):
+
+def tokenize_file(filename):
     with open(filename) as f:
         string_io = StringIO(f.read() + '\n')
+    return tokenize_readline(string_io.readline)
 
-    for tok_info in generate_tokens(string_io.readline):
+
+def tokenize_readline(readline):
+    for tok_info in generate_tokens(readline):
 
         if tok_info.type == token.NAME:
             value = tok_info.string
@@ -55,41 +63,6 @@ def generate_parser_tokens(filename):
 
         else:
             yield Token(tok_info.string, tok_info.string)
-
-
-class GrammarFactory:
-    def __init__(self):
-        object.__setattr__(self, '_recurrences', {})
-
-    def ensure_parsers_defined(self):
-        for name, parser in self._recurrences.items():
-            if parser.parser is None:
-                raise ValueError("{} parser is not defined".format(name))
-
-    def __getattr__(self, name):
-        self._recurrences[name] = recurrence = Recurrence()
-        object.__setattr__(self, name, recurrence)  # To stop this being created again
-        return recurrence
-
-    def __setattr__(self, name, value):
-        assert isinstance(value, BaseParser), (name, value)
-
-        # Existing parser is either recurrence or non recurrence
-        if hasattr(self, name):
-            if name in self._recurrences:
-                recurrence = getattr(self, name)
-                if recurrence.parser is not None:
-                    raise ValueError('Recurrent parser already defined')
-
-                recurrence.parser = value
-                recurrence.simple_name = name
-
-            else:
-                raise ValueError('Parser already assigned')
-
-        # No recurrence relation (as assignment BEFORE get)
-        else:
-            object.__setattr__(self, name, value)
 
 
 def emit_func_def(args):
@@ -998,7 +971,7 @@ def emit_simple_stmt_suite(stmt_or_stmts):
     return stmt_or_stmts
 
 
-g = GrammarFactory()
+g = Grammar('Python')
 
 g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
 # g.eval_input = g.test_list & +ter('NEWLINE') & ter('ENDMARKER')

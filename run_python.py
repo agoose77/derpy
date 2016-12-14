@@ -1,10 +1,10 @@
 from argparse import ArgumentParser
 
-from python.grammar import generate_parser_tokens, g
-from python import ast
+from python.grammar import tokenize_file, g
 from python.codegen import to_source
 
 from derp import parse
+from derp.ast import print_ast, cyclic_colour_formatter
 
 
 if __name__ == "__main__":
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     parser.add_argument('-filepath', default="sample.py")
     args = parser.parse_args()
 
-    tokens = list(generate_parser_tokens(args.filepath))
+    tokens = list(tokenize_file(args.filepath))
     print("Parsing: {} with {} tokens".format(args.filepath, len(tokens)))
 
     result = parse(g.file_input, tokens)
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     else:
         module = result.pop()
-        ast.print_ast(module, format_func=ast.cyclic_colour_formatter)#ast.highlight_node_formatter(ast.alias, ast.green, ast.blue))
+        print_ast(module, format_func=cyclic_colour_formatter)#ast.highlight_node_formatter(ast.alias, ast.green, ast.blue))
 
         source = to_source(module)
         print("Source:")
