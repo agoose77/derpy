@@ -84,7 +84,7 @@ def _make_ast_node(name, field_str="", parent=None, module_name=__name__):
     class_body = AST_template.format(name=name, base=parent, fields=field_names_string_trailer,
                                      slots=underscore_field_names_string, init_args=init_args, init_body=init_body,
                                      hash=hash_string, repr=repr_string, property_body=property_body, eq=eq_string)
-    print(class_body)
+
     local_dict = {'parent': parent}
 
     global_dict = globals().copy()

@@ -48,3 +48,6 @@ class Grammar:
 
     def __repr__(self):
         return "Grammar(name={!r})".format(self._name)
+
+
+# TODO search through parsers and find if a recursive definition is required, or whether we can eliminate it

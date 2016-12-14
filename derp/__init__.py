@@ -396,13 +396,9 @@ InfixMixin._optional = staticmethod(optional)
 
 
 def parse(parser, tokens):
-    from time import clock
-    s = clock()
     for token in tokens:
         parser = compact(parser.derive(token))
         if parser is empty:
-            break
-        if (clock() -s) > 30:
             break
     return parser.derive_null()
 

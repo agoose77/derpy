@@ -12,6 +12,7 @@ class YieldingNodeVisitor:
     def visit(self, node):
         visitor_name = "visit_{}".format(node.__class__.__name__)
         visitor = getattr(self, visitor_name, self.generic_visit)
+        print(visitor)
         yield from visitor(node)
 
 
@@ -39,7 +40,7 @@ class ParserGenerator(YieldingNodeVisitor):
         yield getattr(self.grammar, node.name)
 
     def visit_AltParser(self, node):
-        return Alternate(node.left, node.right)
+        yield Alternate(node.left, node.right)
 
     def visit_LitParser(self, node):
         yield ter(node.lit)
