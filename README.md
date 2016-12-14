@@ -34,3 +34,9 @@ P represents a parser (e.g S above)
 ## Python Grammar Parsing
 A Python parser example can be found in the python module. It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar.
 Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested using an existing ast to code utility, simply replacing the import).
+
+## Funnel Grammar Parsing
+A Funnel parser example can be found in the funnel module. Funnel is a custom lightweight language that allows embedded Python inside data model definitions
+
+## PyBNF Grammar Meta Parsing
+An example of parsing a Python BNF-like grammar, to output a parser is given. Note, this is quite slow at parsing a full grammar, so it's more of a POC at this point.
