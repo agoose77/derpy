@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 
-from funnel.grammar import f, generate_parser_tokens
+from funnel.grammar import f
+from funnel.tokenizer import tokenize_file
 from python import codegen
 from derp import parse
 from derp.ast import print_ast, cyclic_colour_formatter, NodeVisitor, highlight_node_formatter
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     parser.add_argument('-filepath', default="sample.funnel")
     args = parser.parse_args()
 
-    tokens = list(generate_parser_tokens(args.filepath))
+    tokens = list(tokenize_file(args.filepath))
     print("Parsing: {} with {} tokens".format(args.filepath, len(tokens)))
     result = parse(f.file_input, tokens)
 

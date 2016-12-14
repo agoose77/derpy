@@ -3,6 +3,8 @@ from collections import deque
 from derp import ter, one_plus
 from derp.utilities import unpack_n
 from derp.grammar import Grammar
+from derp.ast import iter_fields
+
 from . import ast
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
@@ -680,7 +682,7 @@ def emit_atom_expr(args):
     node = atom
 
     for trailer in trailers:
-        names, values = zip(*ast.iter_fields(trailer))
+        names, values = zip(*iter_fields(trailer))
         node = trailer.__class__(node, *values[1:])
 
     return node
@@ -856,7 +858,7 @@ def emit_ellipsis(_):
 
 def emit_decorated(args):
     decorators, definition = args
-    def_dict = dict(ast.iter_fields(definition))
+    def_dict = dict(iter_fields(definition))
     def_dict['decorator_list'] = decorators
     new_definition = definition.__class__(**def_dict)
     return new_definition

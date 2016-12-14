@@ -8,6 +8,7 @@
     :license: BSD.
 """
 from python.ast import *
+from derp.ast import *
 
 BINOP_SYMBOLS = {}
 BINOP_SYMBOLS[Add] = '+'

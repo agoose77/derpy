@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 
-from python.grammar import tokenize_file, g
+from python.tokenizer import tokenize_file
+from python.grammar import g
 from python.codegen import to_source
 
 from derp import parse
