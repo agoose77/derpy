@@ -4,13 +4,12 @@ from bnf.tokenizer import tokenize_file, tokenize_text
 from bnf.generate import  ParserGenerator
 from bnf.meta_grammar import b
 
-from derp import parse, ter, to_text
+from derp import parse, ter
 from derp.ast import print_ast
 
-from python.grammar import tokenize_text as py_tokenize_text
+from python.tokenizer import tokenize_file as py_tokenize_file
 
 
-grammar = """my_rule: 'for' ['yield' ['s']]""" # Define 'for' because the Python tokenize will output a Token('for','for') rather than Token('ID', 'for') token
 sample = """for"""
 
 
@@ -22,13 +21,13 @@ class CustomParserGenerator(ParserGenerator):
 
 
 if __name__ == "__main__":
-    # parser = ArgumentParser(description='BNF parser generator')
-    # parser.add_argument('-filepath', default="python.bnf")
-    # args = parser.parse_args()
-    #
-    # tokens = list(tokenize_file(args.filepath))
-    # print("Parsing: {} with {} tokens".format(args.filepath, len(tokens)))
-    tokens = list(tokenize_text(grammar))
+    parser = ArgumentParser(description='BNF parser generator')
+    parser.add_argument('-filepath', default="sample.bnf")
+    parser.add_argument('-sample', default="sample.txt")
+    args = parser.parse_args()
+
+    tokens = list(tokenize_file(args.filepath))
+    print("Parsing BNF grammar: {} with {} tokens".format(args.filepath, len(tokens)))
 
     # Print parse of BNF
     result = parse(b.file_input, tokens)
@@ -36,11 +35,12 @@ if __name__ == "__main__":
     print_ast(root)
 
     # Generate parsers from AST
-    generator = CustomParserGenerator('My Language')
+    generator = CustomParserGenerator('Demo BNF')
     grammar = next(generator.visit(root))
     grammar.ensure_parsers_defined()
 
     # Tokenize expression
-    sample_tokens = py_tokenize_text(sample)
-    result = parse(grammar.my_rule & ter('NEWLINE') & ter('ENDMARKER'), sample_tokens)
+    print("Parsing grammar sample: {} with {} tokens".format(args.filepath, len(tokens)))
+    sample_tokens = py_tokenize_file(args.sample)
+    result = parse(grammar.main & ter('NEWLINE') & ter('ENDMARKER'), sample_tokens)
     print(result)

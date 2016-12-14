@@ -1,0 +1,2 @@
+# Define 'for' because the Python tokenize will output a Token('for','for') rather than Token('ID', 'for') token
+main: 'for' ['yield' ['del']]
