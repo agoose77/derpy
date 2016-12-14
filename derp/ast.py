@@ -20,6 +20,9 @@ class {name}(parent):
     def __repr__(self):
         return {repr}
 
+    def __eq__(self, other):
+        return {eq}
+
     @classmethod
     def subclass(cls, name, field_str='', module_name=__name__):
         return _make_ast_node(name, field_str, cls, module_name)
@@ -34,7 +37,7 @@ AST_property = \
         return self._{name}"""
 
 
-AST_value_element = "self._{name}"
+AST_value_element = "{obj}._{name}"
 AST_repr_element = "{name}={{!r}}"
 AST_field_init = "        self._{name} = {name}"
 
@@ -64,17 +67,24 @@ def _make_ast_node(name, field_str="", parent=None, module_name=__name__):
     hash_string = "({})".format(field_variables_trailer)
 
     repr_elements = (AST_repr_element.format(name=f) for f in fields)
-    repr_values = (AST_value_element.format(name=f) for f in fields)
+    repr_values = [AST_value_element.format(obj='self', name=f) for f in fields]
     repr_string = "'{name}({elements})'.format({values})"\
         .format(name=name, elements=', '.join(repr_elements), values=', '.join(repr_values)) if fields else \
         "'{}()'".format(name)
 
     property_body = "\n".join(AST_property.format(name=n) for n in fields)
 
+    if fields:
+        other_repr_values = (AST_value_element.format(obj='other', name=f) for f in fields)
+        eq_string  = "self.__class__ is other.__class__ and ({}) == ({})".format(", ".join(repr_values), ", ".join(other_repr_values))
+
+    else:
+        eq_string = "self.__class__ == other.__class__"
+
     class_body = AST_template.format(name=name, base=parent, fields=field_names_string_trailer,
                                      slots=underscore_field_names_string, init_args=init_args, init_body=init_body,
-                                     hash=hash_string, repr=repr_string, property_body=property_body)
-
+                                     hash=hash_string, repr=repr_string, property_body=property_body, eq=eq_string)
+    print(class_body)
     local_dict = {'parent': parent}
 
     global_dict = globals().copy()
@@ -130,7 +140,7 @@ def write_ast(node, writer, level=0, indent='  ', format_func=None):
 
     root_margin = indent * level
 
-    as_dict = node._to_dict()
+    as_dict = dict(iter_fields(node))
 
     field_margin = (level + 1) * indent
 
@@ -184,11 +194,12 @@ def write_ast(node, writer, level=0, indent='  ', format_func=None):
 
 
 def iter_fields(node):
-    yield from node._to_dict().items()
+    return ((f, getattr(node, f)) for f in node._fields)
 
 
 def iter_child_nodes(node):
-    for key, value in node._to_dict().items():
+    for key, value in iter_fields(node):
+
         if isinstance(value, AST):
             yield value
 

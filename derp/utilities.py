@@ -38,22 +38,21 @@ def to_text_helper(func):
     return recursion_guard_text(limited_depth_text(func))
 
 
+
 def memoized(f):
-    cache = {}
-
-    @wraps(f)
-    def f_memo(*args):
+    memo = {}
+    def wrapper(*args, memo=memo):
         try:
-            return cache[args]
-
+            return memo[args]
         except KeyError:
-            result = cache[args] = f(*args)
+            result = memo[args] = f(*args)
             return result
 
-    return f_memo
+    return wrapper
 
 
-memoized_property = lambda f: property(memoized(f))
+def memoized_property(f):
+    return property(memoized(f))
 
 
 def rflatten(seq, first=True):
