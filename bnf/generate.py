@@ -1,4 +1,4 @@
-from derp import Reduce, ter, Alternate, Concatenate, one_plus, greedy, optional
+from derp import Reduce, ter, Alternate, Concatenate, star, plus, opt
 from derp.ast import iter_child_nodes
 from derp.grammar import Grammar
 
@@ -52,12 +52,12 @@ class ParserGenerator(YieldingNodeVisitor):
 
     def visit_ManyParser(self, node):
         parser = next(self.visit(node.child))
-        yield greedy(parser)
+        yield plus(parser)
 
     def visit_OnePlusParser(self, node):
         parser = next(self.visit(node.child))
-        yield one_plus(parser)
+        yield star(parser)
 
     def visit_OptParser(self, node):
         parser = next(self.visit(node.child))
-        yield optional(parser)
+        yield opt(parser)

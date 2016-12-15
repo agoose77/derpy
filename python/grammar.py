@@ -1,6 +1,6 @@
 from collections import deque
 
-from derp import ter, one_plus
+from derp import ter, star
 from derp.utilities import unpack_n
 from derp.grammar import Grammar
 from derp.ast import iter_fields
@@ -922,7 +922,7 @@ g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLI
 g.file_input = (+(ter('NEWLINE') | g.stmt) & ter('ENDMARKER')) >> emit_file_input
 
 g.decorator = (ter('@') & g.dotted_name & ~(ter('(') & ~g.arg_list & ter(')')) & ter('NEWLINE')) >> emit_decorator
-g.decorators = one_plus(g.decorator)
+g.decorators = star(g.decorator)
 
 g.decorated = (g.decorators & (g.class_def | g.func_def)) >> emit_decorated  # Ignore async
 
@@ -971,10 +971,12 @@ g.raise_stmt = (ter('raise') & ~(g.test & ~(ter('from') & g.test))) >> emit_rais
 g.import_stmt = g.import_name | g.import_from
 g.import_name = (ter('import') & g.dotted_as_names) >> emit_import
 g.import_from = (ter('from') &
-                 ((+(ter('.') | ter('...')) & g.dotted_name) >> emit_import_from_dotted_name | one_plus(
+                 ((+(ter('.') | ter('...')) & g.dotted_name) >> emit_import_from_dotted_name | star(
                      ter('.') | ter('...')) >> emit_import_from_no_name)
                  & ter('import') & (ter('*') >> emit_import_from_all | (
     ter('(') & g.import_as_names & ter(')')) >> emit_import_from_names_paren | g.import_as_names)) >> emit_import_from
+
+# from & ((ALT & import)), aLT)
 g.import_as_name = (ter('ID') & ~(ter('as') & ter('ID'))) >> emit_alias
 g.import_as_names = (g.import_as_name & +(ter(',') & g.import_as_name) & ~ter(',')) >> emit_import_from_names
 g.dotted_name = (ter('ID') & +(ter('.') & ter('ID'))) >> emit_dotted_name
@@ -992,7 +994,7 @@ g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & ~(ter('else') & ter
 g.for_stmt = (ter('for') & g.expr_list & ter('in') & g.test_list & ter(':') & g.suite & ~(
     ter('else') & ter(':') & g.suite)) >> emit_for
 g.try_stmt = (ter('try') & ter(':') & g.suite &
-              ((one_plus(g.except_clause & ter(':') & g.suite) &
+              ((star(g.except_clause & ter(':') & g.suite) &
                 ~(ter('else') & ter(':') & g.suite) &
                 ~(ter('finally') & ter(':') & g.suite)) >> emit_try_except_else_finally |
                # Just finally no except
@@ -1003,7 +1005,7 @@ g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') 
 g.with_item = (g.test & ~(ter('as') & g.expr)) >> emit_alias
 g.except_clause = ter('except') & ~((g.test & ~(ter('as') & ter('ID'))) >> emit_alias)
 
-g.suite = g.simple_stmt >> emit_simple_stmt_suite | (ter('NEWLINE') & ter('INDENT') & one_plus(g.stmt) & ter(
+g.suite = g.simple_stmt >> emit_simple_stmt_suite | (ter('NEWLINE') & ter('INDENT') & star(g.stmt) & ter(
     'DEDENT')) >> emit_nl_indent_one_plus_dedent_suite  # Always emit flat tuple of nodes
 g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) >> emit_test_left | g.lambda_def
 g.test_no_cond = g.or_test | g.lambda_def_no_cond
@@ -1032,7 +1034,7 @@ g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
 g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) >> emit_generator_comp |
           (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) >> emit_list_comp |
           (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict_comp |
-          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | one_plus(ter('LIT')) >> emit_lit |
+          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | star(ter('LIT')) >> emit_lit |
           ter('...') >> emit_ellipsis | ter('None') >> emit_name_constant | ter('True') >> emit_name_constant |
           ter('False') >> emit_name_constant)
 

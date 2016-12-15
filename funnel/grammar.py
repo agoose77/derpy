@@ -1,6 +1,6 @@
 from python.grammar import g, Grammar
 from . import ast
-from derp import ter, one_plus
+from derp import ter, star
 from derp.utilities import unpack_n
 
 
@@ -99,7 +99,7 @@ f.small_stmt = f.attribute_def
 f.simple_stmt = (f.small_stmt & +(ter(';') & f.small_stmt) & ~ter(';') & ter('NEWLINE')) >> emit_simple_stmt
 f.compound_stmt = f.validate | f.form
 
-f.suite = f.simple_stmt | (ter('NEWLINE') & ter('INDENT') & one_plus(f.stmt) & ter('DEDENT')) >> emit_nl_indented
+f.suite = f.simple_stmt | (ter('NEWLINE') & ter('INDENT') & star(f.stmt) & ter('DEDENT')) >> emit_nl_indented
 f.file_input = (+(ter('NEWLINE') | f.type_def) & ter('ENDMARKER')) >> emit_file_input
 
 f.ensure_parsers_defined()

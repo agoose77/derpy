@@ -38,21 +38,54 @@ def to_text_helper(func):
     return recursion_guard_text(limited_depth_text(func))
 
 
+def weakly_memoized(f):
+    memo = WeakKeyDictionary()
 
-def memoized(f):
-    memo = {}
-    def wrapper(*args, memo=memo):
+    def wrapper(self, memo=memo):
         try:
-            return memo[args]
+            return memo[self]
+
         except KeyError:
-            result = memo[args] = f(*args)
+            result = memo[self] = f.__get__(self)()
             return result
 
     return wrapper
 
 
+def weakly_memoized_n(f):
+    memo = WeakKeyDictionary()
+
+    def wrapper(self, *args, memo=memo):
+        try:
+            self_memo = memo[self]
+        except KeyError:
+            self_memo = memo[self] = {}
+
+        try:
+            result = self_memo[args]
+        except KeyError:
+            result = self_memo[args] = f.__get__(self)(*args)
+        return result
+
+    return wrapper
+
+
 def memoized_property(f):
-    return property(memoized(f))
+    return property(weakly_memoized(f))
+
+
+def memoized_compact(f):
+    memo = WeakKeyDictionary()
+
+    def wrapper(self, memo=memo):
+        try:
+            return memo[self]
+        except KeyError:
+            memo[self] = self
+            result = memo[self] = f.__get__(self)()
+            return result
+
+    return wrapper
 
 
 def rflatten(seq, first=True):

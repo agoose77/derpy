@@ -5,7 +5,7 @@ from python.grammar import g
 from python.codegen import to_source
 
 from derp import parse
-from derp.ast import print_ast, cyclic_colour_formatter
+from derp.ast import write_ast
 
 
 if __name__ == "__main__":
@@ -23,8 +23,7 @@ if __name__ == "__main__":
 
     else:
         module = result.pop()
-        print_ast(module, format_func=cyclic_colour_formatter)#ast.highlight_node_formatter(ast.alias, ast.green, ast.blue))
 
-        source = to_source(module)
-        print("Source:")
-        print(source)
+        output_filename = "{}.ast".format(args.filepath)
+        with open(output_filename, 'w') as f:
+            write_ast(module,f)

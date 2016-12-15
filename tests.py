@@ -1,4 +1,4 @@
-from derp import Token, parse, ter, one_plus
+from derp import Token, parse, ter, star
 
 # examples
 if __name__ == '__main__' and 1:
@@ -8,7 +8,7 @@ if __name__ == '__main__' and 1:
     parse_greedy_example = +ter('var')
     print(parse(parse_greedy_example, tokens))
 
-    parse_one_plus_example = one_plus(ter('var'))
+    parse_one_plus_example = star(ter('var'))
     print(parse(parse_one_plus_example, tokens))
 
     assert parse(parse_greedy_example, []) == {''}
