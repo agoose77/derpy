@@ -29,8 +29,8 @@ P represents a parser (e.g S above)
 * `star(P)` functional name for `+P` (repeat)
 * `opt(P)` functional name for `~P` (optional)
 * `ter(c)` returns parser to match a token with the first attribute string equal to c.
-* `seq(l, r)` returns Concatenation parser of left and right. Optimises to the left.
-* `alt(l, r)` returns Alternate parser of left and right. Optimises to the left.
+* `seq(l, r)` returns Concatenation parser of left and right. 
+* `alt(l, r)` returns Alternate parser of left and right. 
 
 ## Python Grammar Parsing
 A Python parser example can be found in the python module. It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar.
