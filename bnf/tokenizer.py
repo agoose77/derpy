@@ -1,7 +1,5 @@
-from abc import ABC, abstractclassmethod, abstractmethod
-from derp import ter, Token
-from derp.grammar import Grammar
-from derp.utilities import unpack_n
+from abc import ABC, abstractclassmethod
+from derp import Token
 from itertools import chain
 
 

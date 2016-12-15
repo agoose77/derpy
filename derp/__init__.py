@@ -12,7 +12,7 @@ from .utilities import to_text_helper, memoized_property, memoized, TextContext,
 @with_fields('first', 'second')
 class Token:
     def __repr__(self):
-        return "<Token: {} {}>".format(repr(self.first), repr(self.second))
+        return "Token({!r}, {!r})".format(self.first, self.second)
 
 
 class InfixMixin:
@@ -367,7 +367,7 @@ def one_plus(parser):
 
 
 def greedy(parser):
-    r = Recurrence()
+    recurrence = Recurrence()
 
     def red_repeat(args):
         first, remainder = args
@@ -375,8 +375,8 @@ def greedy(parser):
             return first,
         return (first,) + remainder
 
-    r.parser = Alternate(empty_string, Reduce(Concatenate(parser, r), red_repeat))  # r = ~(parser & r)
-    return r
+    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence), red_repeat))  # recurrence = ~(parser & recurrence)
+    return recurrence
 
 
 def optional(parser):
@@ -385,14 +385,6 @@ def optional(parser):
 
 def ter(word):
     return Ter(word)
-
-
-# Define Infix operations
-InfixMixin._concat = Concatenate
-InfixMixin._alt = Alternate
-InfixMixin._greedy = staticmethod(greedy)
-InfixMixin._reduce = Reduce
-InfixMixin._optional = staticmethod(optional)
 
 
 def parse(parser, tokens):
@@ -410,3 +402,11 @@ def compact(parser):
 def to_text(parser, max_depth=None):
     context = TextContext(set(), 0, max_depth)
     return parser.to_text(context)
+
+
+# Define Infix operations
+InfixMixin._concat = Concatenate
+InfixMixin._alt = Alternate
+InfixMixin._greedy = staticmethod(greedy)
+InfixMixin._reduce = Reduce
+InfixMixin._optional = staticmethod(optional)
