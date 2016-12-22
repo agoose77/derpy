@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from derp import Token
+from derp.parsers import Token
 from itertools import chain
 
 

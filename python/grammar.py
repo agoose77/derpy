@@ -1,6 +1,6 @@
 from collections import deque
 
-from derp import ter, star
+from derp.parsers import ter, star
 from derp.utilities import unpack_n
 from derp.grammar import Grammar
 from derp.ast import iter_fields

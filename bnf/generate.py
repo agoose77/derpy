@@ -1,4 +1,4 @@
-from derp import Reduce, ter, Alternate, Concatenate, star, plus, opt
+from derp.parsers import Reduce, ter, Alternate, Concatenate, star, plus, opt
 from derp.ast import iter_child_nodes
 from derp.grammar import Grammar
 

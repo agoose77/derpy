@@ -1,4 +1,4 @@
-from . import Recurrence, BaseParser
+from .parsers import Recurrence, BaseParser
 
 
 class Grammar:

@@ -4,7 +4,7 @@ from io import StringIO
 from keyword import iskeyword
 from tokenize import generate_tokens
 
-from derp import Token
+from derp.parsers import Token
 
 
 def tokenize_text(source):

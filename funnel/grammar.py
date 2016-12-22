@@ -1,6 +1,6 @@
 from python.grammar import g, Grammar
 from . import ast
-from derp import ter, star
+from derp.parsers import ter, star
 from derp.utilities import unpack_n
 
 

@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 
 from funnel.grammar import f
 from funnel.tokenizer import tokenize_file
-from derp import parse
+from derp.parsers import parse
 from derp.ast import write_ast
 
 

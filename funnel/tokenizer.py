@@ -1,4 +1,4 @@
-from derp import Token
+from derp.parsers import Token
 from python.tokenizer import tokenize_readline as py_tokenize_readline
 from io import StringIO
 

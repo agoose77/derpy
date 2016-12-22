@@ -4,7 +4,7 @@ from bnf.tokenizer import tokenize_file, tokenize_text
 from bnf.generate import  ParserGenerator
 from bnf.meta_grammar import b
 
-from derp import parse, ter
+from derp.parsers import parse, ter
 from derp.ast import print_ast
 
 from python.tokenizer import tokenize_file as py_tokenize_file

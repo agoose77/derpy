@@ -167,3 +167,43 @@ def with_fields(*fields):
         return type(cls_name, (cls,), cls_dict)
 
     return decorator
+
+
+inf = float("+inf")
+
+
+
+def fix(bottom, n=inf, unwrap=lambda x: x):
+    if not callable(bottom):
+        bottom_value = bottom
+        bottom = lambda *args: bottom_value
+
+    def decorator(f):
+        def f_fix(*args):
+            me = (f_fix, args)
+
+            if not fix.calling:
+                value, fix.values[me] = None, bottom(*args)
+                i = 0
+                while i < n and value != fix.values[me]:
+                    fix.calling.add(me)
+                    value, fix.values[me] = fix.values[me], unwrap(f(*args))
+                    fix.calling.clear()
+                    i += 1
+
+                return value
+
+            else:
+                if me in fix.calling:
+                    return fix.values.get(me, bottom(*args))
+
+                fix.calling.add(me)
+                value = fix.values[me] = unwrap(f(*args))
+                fix.calling.remove(me)
+
+                return value
+        return f_fix
+    return decorator
+
+fix.calling = set()
+fix.values = {}
