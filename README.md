@@ -8,17 +8,25 @@ See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.ht
 
 This parser would be represented as 
 ```python
-S = Recurrence()
+s = Recurrence()
 s.parser = empty_string | (lit('1') & s)
 ```
 
 Or in short-hand
 ```python
-S = Recurrence()
+s = Recurrence()
 s.parser = ~(lit('1') & s)
 ```
 
 This parser could parse any number of ones, before terminating.
+```python
+parse(s, [Token('1', 1) for i in range(5)])
+>> {(1, (1, (1, (1, (1, '')))))}
+```
+
+
+
+
 Infix notation (+, >>, ~, &, |) is defined on each parser to make the process of writing a grammar less verbose and simpler to read.
 
 ## Infix notation
