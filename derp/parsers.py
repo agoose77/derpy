@@ -6,7 +6,7 @@ from .fields import FieldMeta
 from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, overwritable_property
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'compact', 'empty_parser',
-           'empty_string', 'plus', 'star', 'opt', 'parse', 'ter')
+           'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
 
 
 class Token(metaclass=FieldMeta, fields='first second'):
@@ -149,6 +149,7 @@ class Alternate(Delayable, fields='left right'):
 
 
 class Concatenate(Delayable, fields='left right'):
+
     @memoized_compact
     def compact(self):
         self.left = self.left.compact()
@@ -223,6 +224,7 @@ class Empty(BaseParser):
 
 
 class Epsilon(BaseParser, fields='_trees'):
+
     def __new__(cls, trees):
         if not isinstance(trees, set):
             raise ValueError(trees)
@@ -296,6 +298,7 @@ class Reduce(BaseParser, fields='parser func'):
 
 
 class Literal(BaseParser, fields='string'):
+
     @overwritable_property
     def simple_name(self):
         return "Ter({})".format(self.string)
@@ -336,19 +339,23 @@ def opt(parser):
     return Alternate(empty_string, parser)
 
 
-def ter(word):
+def lit(word):
+    """Create a Literal parser"""
     return Literal(word)
 
 
-def seq(left, right):
+def cat(left, right):
+    """Create a Concatenate parser"""
     return Concatenate(left, right)
 
 
 def alt(left, right):
+    """Create an Alternate parser"""
     return Alternate(left, right)
 
 
 def red(parser, func):
+    """Create a Reduction parser"""
     return Reduce(parser, func)
 
 
@@ -368,7 +375,7 @@ empty_parser = Empty()
 empty_string = Epsilon.from_value('')
 
 # Define Infix operations
-InfixMixin._concatenate = seq
+InfixMixin._concatenate = cat
 InfixMixin._alternate = alt
 InfixMixin._plus = plus
 InfixMixin._reduce = red
