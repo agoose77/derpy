@@ -1,16 +1,16 @@
 """Parsing with derivatives, in Python"""
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from itertools import product
 
-from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, overwritable_property, \
-    with_fields
+from .fields import FieldMeta
+from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, overwritable_property
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'compact', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'ter')
 
 
-@with_fields('first', 'second')
-class Token:
+class Token(metaclass=FieldMeta, fields='first second'):
+
     def __hash__(self):
         return hash((self.first, self.second))
 
@@ -49,7 +49,12 @@ class InfixMixin:
         return self._reduce(other)
 
 
-class BaseParser(InfixMixin, ABC):
+class BaseParserMeta(FieldMeta, ABCMeta):
+    pass
+
+
+class BaseParser(InfixMixin, metaclass=BaseParserMeta):
+
     @overwritable_property
     def simple_name(self):
         return self.__class__.__name__
@@ -67,8 +72,7 @@ class BaseParser(InfixMixin, ABC):
         return self
 
 
-@with_fields('parser', 'token')
-class LazyDerivative(BaseParser):
+class LazyDerivative(BaseParser, fields='parser token'):
     """Lazy derivative evaluation of derivative of a parser wrt a given token.
     Partially avoids non-terminating recursion.
     """
@@ -120,8 +124,7 @@ class Delayable(BaseParser):
                 return self._null_set
 
 
-@with_fields('left', 'right')
-class Alternate(Delayable):
+class Alternate(Delayable, fields='left right'):
     @memoized_compact
     def compact(self):
         self.left = self.left.compact()
@@ -145,8 +148,7 @@ class Alternate(Delayable):
         return deriv_left | deriv_right
 
 
-@with_fields('left', 'right')
-class Concatenate(Delayable):
+class Concatenate(Delayable, fields='left right'):
     @memoized_compact
     def compact(self):
         self.left = self.left.compact()
@@ -188,8 +190,7 @@ class Concatenate(Delayable):
         return set(product(deriv_left, deriv_right))
 
 
-@with_fields('parser')
-class Delta(InfixMixin):
+class Delta(BaseParser, fields='parser'):
     """Used to keep a record of skipped parse trees"""
 
     @memoized_compact
@@ -203,7 +204,6 @@ class Delta(InfixMixin):
         return self.parser.derive_null()
 
 
-@with_fields()
 class Empty(BaseParser):
     _singleton = None
 
@@ -222,8 +222,7 @@ class Empty(BaseParser):
         return set()
 
 
-@with_fields('_trees')
-class Epsilon(BaseParser):
+class Epsilon(BaseParser, fields='_trees'):
     def __new__(cls, trees):
         if not isinstance(trees, set):
             raise ValueError(trees)
@@ -266,8 +265,7 @@ class Recurrence(Delayable):
         return self.parser.derive_null()
 
 
-@with_fields('parser', 'func')
-class Reduce(BaseParser):
+class Reduce(BaseParser, fields='parser func'):
     @memoized_compact
     def compact(self):
         self.parser = self.parser.compact()
@@ -297,8 +295,7 @@ class Reduce(BaseParser):
         return set(map(self.func, self.parser.derive_null()))
 
 
-@with_fields('string')
-class Literal(BaseParser):
+class Literal(BaseParser, fields='string'):
     @overwritable_property
     def simple_name(self):
         return "Ter({})".format(self.string)
