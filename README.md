@@ -9,7 +9,13 @@ See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.ht
 This parser would be represented as 
 ```python
 S = Recurrence()
-s.parser = epsilon | (1 & s)
+s.parser = empty_string | (lit('1') & s)
+```
+
+Or in short-hand
+```python
+S = Recurrence()
+s.parser = ~(lit('1') & s)
 ```
 
 This parser could parse any number of ones, before terminating.
