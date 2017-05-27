@@ -1,20 +1,15 @@
 from argparse import ArgumentParser
 
-from bnf.tokenizer import tokenize_file, tokenize_text
-from bnf.generate import  ParserGenerator
+from bnf.generate import ParserGenerator
 from bnf.meta_grammar import b
-
-from derp.parsers import parse, ter
+from bnf.tokenizer import tokenize_file
 from derp.ast import print_ast
-
-from python.tokenizer import tokenize_file as py_tokenize_file
-
+from derp.parsers import parse
 
 sample = """for"""
 
 
 class CustomParserGenerator(ParserGenerator):
-
     def emit_my_rule(self, args):
         print("Emit My Rule!", args)
         return args

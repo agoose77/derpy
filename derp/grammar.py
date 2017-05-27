@@ -9,14 +9,17 @@ class Grammar:
         object.__setattr__(self, '_frozen', False)
 
     def ensure_parsers_defined(self):
+        """Check all parsers are defined"""
         for name, parser in self._recurrences.items():
             if parser.parser is None:
                 raise ValueError("{} parser is not defined".format(name))
+
         object.__setattr__(self, '_frozen', True)
 
     def __getattr__(self, name):
         try:
             recurrence = self._recurrences[name]
+
         except KeyError:
             if self._frozen:
                 raise AttributeError("Grammar has no rule {!r}".format(name))

@@ -1,4 +1,4 @@
-from derp import Token, parse, ter, star
+from derp.parsers import Token, parse, ter, star
 
 # examples
 if __name__ == '__main__' and 1:

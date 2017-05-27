@@ -1,9 +1,9 @@
 """Parsing with derivatives, in Python"""
-from itertools import product
 from abc import ABC, abstractmethod
+from itertools import product
 
-from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, TextContext, \
-    overwritable_property, with_fields
+from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, overwritable_property, \
+    with_fields
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'compact', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'ter')
@@ -11,7 +11,6 @@ __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token
 
 @with_fields('first', 'second')
 class Token:
-
     def __hash__(self):
         return hash((self.first, self.second))
 
@@ -51,7 +50,6 @@ class InfixMixin:
 
 
 class BaseParser(InfixMixin, ABC):
-
     @overwritable_property
     def simple_name(self):
         return self.__class__.__name__
@@ -124,7 +122,6 @@ class Delayable(BaseParser):
 
 @with_fields('left', 'right')
 class Alternate(Delayable):
-
     @memoized_compact
     def compact(self):
         self.left = self.left.compact()
@@ -150,7 +147,6 @@ class Alternate(Delayable):
 
 @with_fields('left', 'right')
 class Concatenate(Delayable):
-
     @memoized_compact
     def compact(self):
         self.left = self.left.compact()
@@ -209,7 +205,6 @@ class Delta(InfixMixin):
 
 @with_fields()
 class Empty(BaseParser):
-
     _singleton = None
 
     def __new__(cls):
@@ -229,7 +224,6 @@ class Empty(BaseParser):
 
 @with_fields('_trees')
 class Epsilon(BaseParser):
-
     def __new__(cls, trees):
         if not isinstance(trees, set):
             raise ValueError(trees)
@@ -266,7 +260,7 @@ class Recurrence(Delayable):
         return self.parser.compact()
 
     def _derive(self, token):
-        return self.parser.derive(token)#.compact()
+        return self.parser.derive(token)  # .compact()
 
     def _derive_null(self):
         return self.parser.derive_null()
@@ -274,7 +268,6 @@ class Recurrence(Delayable):
 
 @with_fields('parser', 'func')
 class Reduce(BaseParser):
-
     @memoized_compact
     def compact(self):
         self.parser = self.parser.compact()
@@ -306,7 +299,6 @@ class Reduce(BaseParser):
 
 @with_fields('string')
 class Literal(BaseParser):
-
     @overwritable_property
     def simple_name(self):
         return "Ter({})".format(self.string)
@@ -338,7 +330,8 @@ def plus(parser):
             return first,
         return (first,) + remainder
 
-    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence), red_repeat))  # recurrence = ~(parser & recurrence)
+    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence),
+                                                       red_repeat))  # recurrence = ~(parser & recurrence)
     return recurrence
 
 
@@ -376,7 +369,6 @@ def parse(parser, tokens):
 
 empty_parser = Empty()
 empty_string = Epsilon.from_value('')
-
 
 # Define Infix operations
 InfixMixin._concatenate = seq
