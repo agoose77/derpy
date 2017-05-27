@@ -2,6 +2,9 @@ from .parsers import Recurrence, BaseParser
 
 
 class Grammar:
+    """Namespace for grammar definitions.
+
+    Facilitates use-before-declaration of rules using a Recurrence parser"""
 
     def __init__(self, name):
         object.__setattr__(self, '_name', name)
@@ -17,33 +20,35 @@ class Grammar:
         object.__setattr__(self, '_frozen', True)
 
     def __getattr__(self, name):
-        try:
-            recurrence = self._recurrences[name]
+        if self._frozen:
+            raise AttributeError("Frozen grammar has no rule {!r}".format(name))
 
-        except KeyError:
-            if self._frozen:
-                raise AttributeError("Grammar has no rule {!r}".format(name))
-
-            self._recurrences[name] = recurrence = Recurrence()
-
-        object.__setattr__(self, name, recurrence)  # To stop this being created again
+        recurrence = self._recurrences[name] = Recurrence()
+        object.__setattr__(self, name, recurrence)  # Assign recurrence to attribute
         return recurrence
 
     def __setattr__(self, name, value):
-        assert isinstance(value, BaseParser), (name, value)
+        if self._frozen:
+            raise AttributeError("Frozen grammar cannot be assigned to")
 
-        # Existing parser is either recurrence or non recurrence
+        if not isinstance(value, BaseParser):
+            raise ValueError("Grammar rule must be assigned to an instance of BaseParser")
+
+        # Existing parser is either forward-declared-recurrence or a normal parser
         if hasattr(self, name):
-            if name in self._recurrences:
-                recurrence = getattr(self, name)
+            try:
+                recurrence = self._recurrences[name]
+
+            except KeyError:
+                # In this case, parser wasn't found in recurrences so must have been explicitly assigned
+                raise ValueError('Parser already assigned')
+
+            else:
                 if recurrence.parser is not None:
                     raise ValueError('Recurrent parser already defined')
 
                 recurrence.parser = value
                 recurrence.simple_name = name
-
-            else:
-                raise ValueError('Parser already assigned')
 
         # No recurrence relation (as assignment BEFORE get)
         else:
@@ -51,6 +56,3 @@ class Grammar:
 
     def __repr__(self):
         return "Grammar(name={!r})".format(self._name)
-
-
-# TODO search through parsers and find if a recursive definition is required, or whether we can eliminate it
