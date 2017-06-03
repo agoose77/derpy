@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from itertools import product
 
 from .fields import FieldMeta
-from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, overwritable_property
+from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -54,8 +54,6 @@ class BaseParserMeta(FieldMeta, ABCMeta):
 
 
 class BaseParser(InfixMixin, metaclass=BaseParserMeta):
-
-    @overwritable_property
     def simple_name(self):
         return self.__class__.__name__
 
@@ -235,7 +233,6 @@ class Epsilon(BaseParser, fields='_trees'):
 
         return super().__new__(cls)
 
-    @overwritable_property
     def simple_name(self):
         return "Epsilon({!r})".format(self._trees)
 
@@ -300,7 +297,6 @@ class Reduce(BaseParser, fields='parser func'):
 
 class Literal(BaseParser, fields='string'):
 
-    @overwritable_property
     def simple_name(self):
         return "Ter({})".format(self.string)
 

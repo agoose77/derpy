@@ -4,7 +4,8 @@ from .parsers import Recurrence, BaseParser
 class Grammar:
     """Namespace for grammar definitions.
 
-    Facilitates use-before-declaration of rules using a Recurrence parser"""
+    Facilitates use-before-declaration of rules using a Recurrence parser
+    """
 
     def __init__(self, name):
         object.__setattr__(self, '_name', name)
@@ -48,7 +49,6 @@ class Grammar:
                     raise ValueError('Recurrent parser already defined')
 
                 recurrence.parser = value
-                recurrence.simple_name = name
 
         # No recurrence relation (as assignment BEFORE get)
         else:

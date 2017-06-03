@@ -1,6 +1,6 @@
 import unittest
 
-from derp.ast import AST, NodeTransformer, NodeVisitor
+from derp.ast.ast import AST, NodeTransformer, NodeVisitor
 
 Module = AST.subclass("Module", "body")
 While = AST.subclass("While", "condition body")
