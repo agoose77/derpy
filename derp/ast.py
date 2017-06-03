@@ -1,11 +1,12 @@
-from collections import deque, OrderedDict
+"""AST module for ASTs independent of Python AST"""
+from collections import deque
 from io import StringIO
 
 
 _TUPLE_HASH = hash(())
 
 
-AST_template = """
+_ast_declaration = """
 class {name}(parent):
 
     _fields = ({fields})
@@ -13,7 +14,7 @@ class {name}(parent):
 
     def __init__(self{init_args}):
         self._hash = hash({hash})
-{init_body}
+        {init_body}
     def __hash__(self):
         return self._hash
 
@@ -30,62 +31,66 @@ class {name}(parent):
 
 """
 
-AST_property = \
-"""
+_ast_property_stmt = """
     @property
     def {name}(self):
-        return self._{name}"""
+        return self._{name}
+"""
 
 
-AST_value_element = "{obj}._{name}"
-AST_repr_element = "{name}={{!r}}"
-AST_field_init = "        self._{name} = {name}"
+_field_getter_stmt = "{obj}._{name}"
+_field_repr_stmt = "{name}={{!r}}"
+_field_init_stmt = "self._{name} = {name}"
 
 
-def _make_ast_node(name, field_str="", parent=None, module_name=__name__):
-    fields = tuple(f.strip() for f in field_str.split(' ') if f.strip())
+def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
+    if field_str:
+        field_names = tuple(field_str.split(' '))
+    else:
+        field_names = ()
 
-    if parent is None:
-        parent = object
+    if parent_cls is None:
+        parent_cls = object
 
     else:
-        fields = parent._fields + fields
+        field_names = parent_cls._fields + field_names
 
     # Validation
-    assert len(set(fields)) == len(fields), "Duplicate field name given. Check parent class {}".format(parent)
-    assert all(f.isidentifier() for f in fields), "Non identifier field name given"
+    assert len(set(field_names)) == len(field_names), "Duplicate field name given. Check parent class {}"\
+        .format(parent_cls)
+    assert all(f.isidentifier() for f in field_names), "Non identifier field name given: {}".format(field_names)
 
-    underscore_field_names_string = ", ".join((repr("_"+f) for f in fields))
-    field_names_string = ", ".join((repr(f) for f in fields))
-    field_names_string_trailer = (field_names_string + ",") if fields else ""
+    underscore_field_names_string = ", ".join((repr("_"+f) for f in field_names))
+    field_names_string = ", ".join((repr(f) for f in field_names))
+    field_names_string_trailer = (field_names_string + ",") if field_names else ""
 
-    field_variables_string = ", ".join(fields)
-    field_variables_trailer = (", ".join(fields) + ("," if len(fields) == 1 else ""))
+    field_variables_string = ", ".join(field_names)
+    field_variables_trailer = (", ".join(field_names) + ("," if len(field_names) == 1 else ""))
 
-    init_args = (", " + field_variables_string) if fields else ""
-    init_body = ("\n".join(AST_field_init.format(name=f) for f in fields) + "\n") if fields else ""
+    init_args = (", " + field_variables_string) if field_names else ""
+    init_body = ("\n        ".join(_field_init_stmt.format(name=f) for f in field_names) + "\n") if field_names else ""
     hash_string = "({})".format(field_variables_trailer)
 
-    repr_elements = (AST_repr_element.format(name=f) for f in fields)
-    repr_values = [AST_value_element.format(obj='self', name=f) for f in fields]
+    repr_elements = (_field_repr_stmt.format(name=f) for f in field_names)
+    repr_values = [_field_getter_stmt.format(obj='self', name=f) for f in field_names]
     repr_string = "'{name}({elements})'.format({values})"\
-        .format(name=name, elements=', '.join(repr_elements), values=', '.join(repr_values)) if fields else \
+        .format(name=name, elements=', '.join(repr_elements), values=', '.join(repr_values)) if field_names else \
         "'{}()'".format(name)
 
-    property_body = "\n".join(AST_property.format(name=n) for n in fields)
+    property_body = "\n".join(_ast_property_stmt.format(name=n) for n in field_names)
 
-    if fields:
-        other_repr_values = (AST_value_element.format(obj='other', name=f) for f in fields)
+    if field_names:
+        other_repr_values = (_field_getter_stmt.format(obj='other', name=f) for f in field_names)
         eq_string  = "self.__class__ is other.__class__ and ({}) == ({})".format(", ".join(repr_values), ", ".join(other_repr_values))
 
     else:
         eq_string = "self.__class__ == other.__class__"
 
-    class_body = AST_template.format(name=name, base=parent, fields=field_names_string_trailer,
-                                     slots=underscore_field_names_string, init_args=init_args, init_body=init_body,
-                                     hash=hash_string, repr=repr_string, property_body=property_body, eq=eq_string)
+    class_body = _ast_declaration.format(name=name, base=parent_cls, fields=field_names_string_trailer,
+                                         slots=underscore_field_names_string, init_args=init_args, init_body=init_body,
+                                         hash=hash_string, repr=repr_string, property_body=property_body, eq=eq_string)
 
-    local_dict = {'parent': parent}
+    local_dict = {'parent': parent_cls}
 
     global_dict = globals().copy()
     global_dict['__name__'] = module_name

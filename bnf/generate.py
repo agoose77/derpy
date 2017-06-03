@@ -1,4 +1,4 @@
-from derp.parsers import Reduce, ter, Alternate, Concatenate, star, plus, opt
+from derp.parsers import Reduce, lit, Alternate, Concatenate, star, plus, opt
 from derp.ast import iter_child_nodes
 from derp.grammar import Grammar
 
@@ -43,7 +43,7 @@ class ParserGenerator(YieldingNodeVisitor):
         yield Alternate(node.left, node.right)
 
     def visit_LitParser(self, node):
-        yield ter(node.lit)
+        yield lit(node.lit)
 
     def visit_ConcatParser(self, node):
         left = next(self.visit(node.left))
