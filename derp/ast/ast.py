@@ -108,39 +108,6 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
 AST = _make_ast_node("AST", field_str="")
 
 
-class Colours:
-
-    @staticmethod
-    def red(text):
-        return '\x1b[0;31;m' + text
-
-    @staticmethod
-    def blue(text):
-        return '\x1b[0;34;m' + text
-
-    @staticmethod
-    def green(text):
-        return '\x1b[0;32;m' + text
-
-    @staticmethod
-    def white(text):
-        return '\33[0;37;m' + text
-
-
-def cyclic_colour_formatter(node, level, text):
-    all_colours = Colours.red, Colours.green, Colours.blue, Colours.white
-    colour_f = all_colours[level % len(all_colours)]
-    return colour_f(text)
-
-
-def highlight_node_formatter(node_cls, match_format, other_format):
-    def wrapper(node, level, text):
-        if isinstance(node, node_cls):
-            return match_format(text)
-        return other_format(text)
-    return wrapper
-
-
 def write_ast(node, writer, level=0, indent='  ', format_func=None):
     """Write AST node to writable IO object"""
     if format_func:

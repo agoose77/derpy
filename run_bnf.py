@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from bnf.generate import ParserGenerator
 from bnf.meta_grammar import b
 from bnf.tokenizer import tokenize_file
-from derp.ast import print_ast
+from derp.ast import to_string
 from derp.parsers import parse
 
 sample = """for"""
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print(f"{stop-start}")
 
     # root = result.pop()
-    # print_ast(root)
+    # print(to_string(root))
     # print("Built AST")
     #
     # # Generate parsers from AST
