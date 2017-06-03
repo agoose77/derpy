@@ -4,16 +4,29 @@ A Python implementation of parsing with derivatives. Provides a concise infix no
 See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.html for a Java implementation, or http://matt.might.net/articles/parsing-with-derivatives/ for the original author's publication.
 
 ## Example parser
-```latex 
-S = \epsilon | 1 \cdot  S
-```
+![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;S&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;S)
+
 This parser would be represented as 
 ```python
-S = Recurrence()
-s.parser = epsilon | (1 & s)
+s = Recurrence()
+s.parser = empty_string | (lit('1') & s)
+```
+
+Or in short-hand
+```python
+s = Recurrence()
+s.parser = ~(lit('1') & s)
 ```
 
 This parser could parse any number of ones, before terminating.
+```python
+parse(s, [Token('1', 1) for i in range(5)])
+>> {(1, (1, (1, (1, (1, '')))))}
+```
+
+
+
+
 Infix notation (+, >>, ~, &, |) is defined on each parser to make the process of writing a grammar less verbose and simpler to read.
 
 ## Infix notation
@@ -34,7 +47,8 @@ P represents a parser (e.g S above)
 
 ## Python Grammar Parsing
 A Python parser example can be found in the python module. It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar.
-Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested using an existing ast to code utility, simply replacing the import).
+
+Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested with an existing ast-to-code utility, simply by replacing the import to ast with our own).
 
 ## Funnel Grammar Parsing
 A Funnel parser example can be found in the funnel module. Funnel is a custom lightweight language that allows embedded Python inside data model definitions
