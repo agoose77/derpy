@@ -44,6 +44,12 @@ _field_init_stmt = "self._{name} = {name}"
 
 
 def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
+    """AST constructor
+    
+    :param name: name of AST class
+    :param parent_cls: parent AST class
+    :param module_name: module name to which class belongs
+    """
     if field_str:
         field_names = tuple(field_str.split(' '))
     else:
@@ -136,6 +142,7 @@ def highlight_node_formatter(node_cls, match_format, other_format):
 
 
 def write_ast(node, writer, level=0, indent='  ', format_func=None):
+    """Write AST node to writable IO object"""
     if format_func:
         def write(text):
             writer.write(format_func(node, level, text))
@@ -199,10 +206,12 @@ def write_ast(node, writer, level=0, indent='  ', format_func=None):
 
 
 def iter_fields(node):
+    """Return iterator over fields of AST node"""
     return ((f, getattr(node, f)) for f in node._fields)
 
 
 def iter_child_nodes(node):
+    """Return iterator over AST-derived fields of AST node"""
     for key, value in iter_fields(node):
 
         if isinstance(value, AST):
@@ -215,6 +224,10 @@ def iter_child_nodes(node):
 
 
 def walk(node):
+    """Walk all nodes in AST
+    
+    :param node: root node
+    """
     todo = deque([node])
     while todo:
         node = todo.popleft()
@@ -223,50 +236,62 @@ def walk(node):
 
 
 class NodeVisitor:
+    """Visit all nodes in AST and call corresponding visitor function"""
 
     def generic_visit(self, node):
         for child in iter_child_nodes(node):
             self.visit(child)
+        return node
 
     def visit(self, node):
         visitor_name = "visit_{}".format(node.__class__.__name__)
         visitor = getattr(self, visitor_name, self.generic_visit)
-        visitor(node)
+        return visitor(node)
 
 
 class NodeTransformer(NodeVisitor):
+    """Visit all nodes in AST and return new AST if modified"""
+
+    def _generic_visit_tuple(self, value):
+        new_value = []
+
+        for item in value:
+            assert isinstance(item, AST)
+            item = self.visit(item)
+
+            if item is None:
+                continue
+
+            assert isinstance(item, AST)
+            new_value.append(item)
+        return tuple(new_value)
 
     def generic_visit(self, node):
-        for field, old_value in iter_fields(node):
-            if isinstance(old_value, tuple):
-                new_values = []
+        has_changed = False
+        new_values = []
 
-                for value in old_value:
-                    if isinstance(value, AST):
-                        value = self.visit(value)
-                        if value is None:
-                            continue
+        for field, value in iter_fields(node):
+            new_value = value
 
-                        elif not isinstance(value, AST):
-                            new_values.extend(value)
-                            continue
+            if isinstance(value, tuple):
+                new_value = self._generic_visit_tuple(value)
 
-                    new_values.append(value)
-                old_value[:] = new_values
+            elif isinstance(value, AST):
+                new_value = self.visit(value)
+                assert isinstance(new_value, AST) or new_value is None
 
-            elif isinstance(old_value, AST):
-                new_node = self.visit(old_value)
+            if new_value != value:
+                has_changed = True
 
-                if new_node is None:
-                    delattr(node, field)
+            new_values.append(new_value)
 
-                else:
-                    setattr(node, field, new_node)
+        if has_changed:
+            return node.__class__(*new_values)
 
         return node
 
 
-def print_ast(node, format_func=None):
+def to_string(node, format_func=None):
     io = StringIO()
     write_ast(node, io, format_func=format_func)
-    print(io.getvalue())
+    return io.getvalue()

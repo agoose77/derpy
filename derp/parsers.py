@@ -139,7 +139,7 @@ class Alternate(Delayable, fields='left right'):
         return self
 
     def _derive(self, token):
-        return Alternate(self.left.derive(token), self.right.derive(token))
+        return self.__class__(self.left.derive(token), self.right.derive(token))
 
     def _derive_null(self):
         deriv_left = self.left.derive_null()
@@ -181,8 +181,9 @@ class Concatenate(Delayable, fields='left right'):
         return self
 
     def _derive(self, token):
-        return Alternate(Concatenate(self.left.derive(token), self.right),
-                         Concatenate(Delta(self.left), self.right.derive(token)))
+        cls = self.__class__
+        return Alternate(cls(self.left.derive(token), self.right),
+                         cls(Delta(self.left), self.right.derive(token)))
 
     def _derive_null(self):
         deriv_left = self.left.derive_null()
@@ -291,7 +292,7 @@ class Reduce(BaseParser, fields='parser func'):
             return self
 
     def derive(self, token):
-        return Reduce(self.parser.derive(token), self.func)
+        return self.__class__(self.parser.derive(token), self.func)
 
     def derive_null(self):
         return set(map(self.func, self.parser.derive_null()))
