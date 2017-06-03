@@ -25,11 +25,15 @@ if __name__ == "__main__":
     print("Parsing BNF grammar: {} with {} tokens".format(args.filepath, len(tokens)))
 
     # Print parse of BNF
+    import time
+    start = time.monotonic()
     result = parse(b.file_input, tokens)
-    root = result.pop()
-    print_ast(root)
+    stop = time.monotonic()
+    print(f"{stop-start}")
 
-    print("Built AST")
+    # root = result.pop()
+    # print_ast(root)
+    # print("Built AST")
     #
     # # Generate parsers from AST
     # generator = CustomParserGenerator('Demo BNF')
