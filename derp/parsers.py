@@ -12,6 +12,7 @@ The derivative of any parser with respect to a Token will produce a new parser w
 captures the progress of the parsing process. In other words, taking the derivative returns a new parser whose ability
  to parse future Tokens depends upon the grammar in question - if the parser is given an unexpected Token, then its
  derivative is consequently the Null parser (failed to parse)
+ 
 """
 from abc import ABCMeta, abstractmethod
 from itertools import product

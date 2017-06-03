@@ -106,7 +106,7 @@ def rflatten(seq, first=True):
         else:
             x, seq = seq
 
-            yield x
+        yield x
 
 
 def unpack_n(seq, n, first=True):
