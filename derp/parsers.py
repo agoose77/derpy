@@ -5,7 +5,7 @@ from itertools import product
 from .fields import FieldMeta
 from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact, overwritable_property
 
-__all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'compact', 'empty_parser',
+__all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
 
 
@@ -123,7 +123,7 @@ class Delayable(BaseParser):
             if self._null_set == new_set:
                 return self._null_set
 
-
+# TODO return new parsers rather than mutating?
 class Alternate(Delayable, fields='left right'):
     @memoized_compact
     def compact(self):
@@ -322,7 +322,6 @@ def star(parser):
 
 
 def plus(parser):
-    recurrence = Recurrence()
 
     def red_repeat(args):
         first, remainder = args
@@ -330,8 +329,8 @@ def plus(parser):
             return first,
         return (first,) + remainder
 
-    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence),
-                                                       red_repeat))  # recurrence = ~(parser & recurrence)
+    recurrence = Recurrence()
+    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence), red_repeat))  # recurrence = ~(parser & recurrence)
     return recurrence
 
 

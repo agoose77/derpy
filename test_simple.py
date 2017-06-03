@@ -12,7 +12,7 @@ if __name__ == '__main__' and 1:
     parse_one_plus_example = star(lit('var'))
     print(parse(parse_one_plus_example, tokens))
 
-    print(parse(parse_greedy_example, []))
-
+    parse_greedy_example = +lit('var')
+    parse_one_plus_example = star(lit('var'))
     assert parse(parse_greedy_example, []) == {''}
     assert parse(parse_one_plus_example, []) == set()
