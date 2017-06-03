@@ -44,7 +44,10 @@ _field_init_stmt = "self._{name} = {name}"
 
 
 def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
-    field_names = field_str.split(' ')
+    if field_str:
+        field_names = tuple(field_str.split(' '))
+    else:
+        field_names = ()
 
     if parent_cls is None:
         parent_cls = object
@@ -55,7 +58,7 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
     # Validation
     assert len(set(field_names)) == len(field_names), "Duplicate field name given. Check parent class {}"\
         .format(parent_cls)
-    assert all(f.isidentifier() for f in field_names), "Non identifier field name given"
+    assert all(f.isidentifier() for f in field_names), "Non identifier field name given: {}".format(field_names)
 
     underscore_field_names_string = ", ".join((repr("_"+f) for f in field_names))
     field_names_string = ", ".join((repr(f) for f in field_names))
