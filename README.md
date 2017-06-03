@@ -27,9 +27,9 @@ parse(s, [Token('1', 1) for i in range(5)])
 
 
 
-Infix notation (+, >>, ~, &, |) is defined on each parser to make the process of writing a grammar less verbose and simpler to read.
+Operator overloading (+, >>, ~, &, |) makes the process of writing a grammar less verbose and simpler to read.
 
-## Infix notation
+## Operator notation
 P represents a parser (e.g S above)
 * `+P` Regex *, 0 or more
 * `~P` Optional
