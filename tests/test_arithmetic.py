@@ -1,4 +1,6 @@
-from argparse import ArgumentParser
+import unittest
+from derp.parsers import lit, Token, Recurrence, parse
+
 from derp.grammar import Grammar
 from derp.parsers import Token, parse, lit, alt
 from derp.utilities import unpack_n
@@ -47,12 +49,15 @@ def make_tokens(string):
     return [Token(c, c) for c in string]
 
 
+class TestBasic(unittest.TestCase):
+    def test_basic(self):
+        tokens = make_tokens("(1*3)/4")
+        result = parse(g.expr, tokens)
+        self.assert_(result)
+
+        tuple_ast = result.pop()
+        self.assertEqual(tuple_ast, ("expr", ("mult", ("mult", 1, 3), 4)))
+
+
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument("-expr", type=str, default="(1*3)/4")
-    args = parser.parse_args()
-
-    tokens = make_tokens(args.expr)
-    result = parse(g.expr, tokens)
-
-    print(result)
+    unittest.main()
