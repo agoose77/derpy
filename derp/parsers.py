@@ -1,4 +1,18 @@
-"""Parsing with derivatives, in Python"""
+"""Parsing with derivatives, in Python.
+
+This module defines the base parsing combinators used to perform parsing with derivatives.
+Each parser derives from OperatorMixin, which provides the ability to use operators instead of explicit names to 
+combine parsers & BaseParser, which implements the main parser API and introduces the BaseParserMeta metaclass, which  
+reduces the boilerplate to define fields that can be defined by instantiation arguments. 
+
+Though there are better guides to the function of parsing with derivative (see 
+https://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.html), the general principle is this:
+
+The derivative of any parser with respect to a Token will produce a new parser which can parse future tokens, and 
+captures the progress of the parsing process. In other words, taking the derivative returns a new parser whose ability
+ to parse future Tokens depends upon the grammar in question - if the parser is given an unexpected Token, then its
+ derivative is consequently the Null parser (failed to parse)
+"""
 from abc import ABCMeta, abstractmethod
 from itertools import product
 
@@ -10,7 +24,6 @@ __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token
 
 
 class Token(metaclass=FieldMeta, fields='first second'):
-
     def __hash__(self):
         return hash((self.first, self.second))
 
@@ -21,8 +34,8 @@ class Token(metaclass=FieldMeta, fields='first second'):
         return "Token({!r}, {!r})".format(self.first, self.second)
 
 
-class InfixMixin:
-    """Provides infix notation support to parsers.
+class OperatorMixin:
+    """Provides operator support to parsers.
 
     As parsers may operate upon their own types, these methods are defined later.
     """
@@ -53,8 +66,8 @@ class BaseParserMeta(FieldMeta, ABCMeta):
     pass
 
 
-class BaseParser(InfixMixin, metaclass=BaseParserMeta):
-    def simple_name(self):
+class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
+    def as_string(self):
         return self.__class__.__name__
 
     @abstractmethod
@@ -121,7 +134,7 @@ class Delayable(BaseParser):
             if self._null_set == new_set:
                 return self._null_set
 
-# TODO return new parsers rather than mutating?
+
 class Alternate(Delayable, fields='left right'):
     @memoized_compact
     def compact(self):
@@ -147,7 +160,6 @@ class Alternate(Delayable, fields='left right'):
 
 
 class Concatenate(Delayable, fields='left right'):
-
     @memoized_compact
     def compact(self):
         self.left = self.left.compact()
@@ -223,7 +235,6 @@ class Empty(BaseParser):
 
 
 class Epsilon(BaseParser, fields='_trees'):
-
     def __new__(cls, trees):
         if not isinstance(trees, set):
             raise ValueError(trees)
@@ -233,7 +244,7 @@ class Epsilon(BaseParser, fields='_trees'):
 
         return super().__new__(cls)
 
-    def simple_name(self):
+    def as_string(self):
         return "Epsilon({!r})".format(self._trees)
 
     @classmethod
@@ -296,8 +307,7 @@ class Reduce(BaseParser, fields='parser func'):
 
 
 class Literal(BaseParser, fields='string'):
-
-    def simple_name(self):
+    def as_string(self):
         return "Ter({})".format(self.string)
 
     def derive(self, token):
@@ -319,7 +329,6 @@ def star(parser):
 
 
 def plus(parser):
-
     def red_repeat(args):
         first, remainder = args
         if remainder == '':
@@ -327,7 +336,8 @@ def plus(parser):
         return (first,) + remainder
 
     recurrence = Recurrence()
-    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence), red_repeat))  # recurrence = ~(parser & recurrence)
+    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence),
+                                                       red_repeat))  # recurrence = ~(parser & recurrence)
     return recurrence
 
 
@@ -371,8 +381,8 @@ empty_parser = Empty()
 empty_string = Epsilon.from_value('')
 
 # Define Infix operations
-InfixMixin._concatenate = cat
-InfixMixin._alternate = alt
-InfixMixin._plus = plus
-InfixMixin._reduce = red
-InfixMixin._optional = opt
+OperatorMixin._concatenate = cat
+OperatorMixin._alternate = alt
+OperatorMixin._plus = plus
+OperatorMixin._reduce = red
+OperatorMixin._optional = opt

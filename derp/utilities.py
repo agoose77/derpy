@@ -11,7 +11,7 @@ def limited_depth_text(func):
     @wraps(func)
     def wrapper(self, context):
         if context.depth == context.max_depth:
-            return self.simple_name
+            return self.as_string
 
         new_context = TextContext(context.seen, context.depth + 1, context.max_depth)
         return func(self, new_context)
@@ -28,7 +28,7 @@ def recursion_guard_text(func):
             context.seen.add(self)
 
             return func(self, context)
-        return "{}(...)".format(self.simple_name)
+        return "{}(...)".format(self.as_string)
 
     return wrapper
 
@@ -39,6 +39,7 @@ def to_text_helper(func):
 
 
 def weakly_memoized(f):
+    """Weakly memoized function accepting 0 non-self args"""
     memo = WeakKeyDictionary()
 
     def wrapper(self, memo=memo):
@@ -53,6 +54,7 @@ def weakly_memoized(f):
 
 
 def weakly_memoized_n(f):
+    """Weakly memoized function accepting self and *args"""
     memo = WeakKeyDictionary()
 
     def wrapper(self, *args, memo=memo):
