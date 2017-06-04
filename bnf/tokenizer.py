@@ -1,20 +1,20 @@
 from abc import ABC, abstractclassmethod
-from derp.parsers import Token
 from itertools import chain
+
+from derp.parsers import Token
 
 
 def get_root_tokenizers():
-    return LitTokenizer, IDTokenizer, ParenTokenizer, ColonTokenizer, GreedyTokenizer, OnePlusTokenizer, AltTokenizer,\
+    return LitTokenizer, IDTokenizer, ParenTokenizer, ColonTokenizer, GreedyTokenizer, OnePlusTokenizer, AltTokenizer, \
            NewlineTokenizer, FormattingTokenizer, CommentTokenizer
 
 
 def get_paren_tokenizers():
-    return LitTokenizer, IDTokenizer, ParenTokenizer, ColonTokenizer, GreedyTokenizer, OnePlusTokenizer, AltTokenizer,\
+    return LitTokenizer, IDTokenizer, ParenTokenizer, ColonTokenizer, GreedyTokenizer, OnePlusTokenizer, AltTokenizer, \
            NewlineConsumerTokenizer, FormattingTokenizer, CommentTokenizer
 
 
 class BaseTokenizer(ABC):
-
     @abstractclassmethod
     def should_enter(self, char):
         pass
@@ -48,7 +48,6 @@ class SentinelTokenizer(BaseTokenizer):
 
 
 class TextTokenizerMixin:
-
     def __init__(self):
         super().__init__()
 
@@ -100,7 +99,6 @@ class IDTokenizer(TextTokenizerMixin, BaseTokenizer):
 
 
 class TokenGenerator:
-
     def __init__(self, tokenizers):
         self._tokenizers = tokenizers
         self._tokenizer = None
@@ -126,7 +124,7 @@ class TokenGenerator:
 
 
 class ParenTokenizer(SentinelTokenizer):
-    entry_to_exit_parens = {'(': ')', '[':']'}
+    entry_to_exit_parens = {'(': ')', '[': ']'}
 
     def __init__(self):
         super().__init__()
@@ -210,14 +208,12 @@ class NewlineTokenizer(SymbolTokenizerBase):
 
 
 class NewlineConsumerTokenizer(NewlineTokenizer):
-
     def get_tokens(self):
         return
         yield
 
 
 class FormattingTokenizer(SentinelTokenizer):
-
     @classmethod
     def should_enter(cls, char):
         return char in {' ', '\t'}
@@ -227,7 +223,6 @@ class FormattingTokenizer(SentinelTokenizer):
 
 
 class CommentTokenizer(SentinelTokenizer):
-
     @classmethod
     def should_enter(cls, char):
         return char == '#'
@@ -237,7 +232,6 @@ class CommentTokenizer(SentinelTokenizer):
 
 
 def select_tokenizer_for(char, tokenizers):
-
     try:
         return next(p for p in tokenizers if p.should_enter(char))()
     except StopIteration:
@@ -259,4 +253,3 @@ def tokenize_text(source):
     yield from token_generator.flush_tokens()
 
     yield Token('ENDMARKER', 'ENDMARKER')
-

@@ -1,6 +1,5 @@
 from collections import namedtuple
 from functools import wraps
-from weakref import WeakKeyDictionary
 
 TextContext = namedtuple("TextContext", "seen depth max_depth")
 
@@ -69,12 +68,12 @@ def unpack_n(seq, n, first=True):
     elif n > 1:
         if first:
             seq, x = seq
-            yield from unpack_n(seq, n-1, True)
+            yield from unpack_n(seq, n - 1, True)
             yield x
 
         else:
             x, seq = seq
             yield x
-            yield from unpack_n(seq, n-1, False)
+            yield from unpack_n(seq, n - 1, False)
     else:
         yield seq

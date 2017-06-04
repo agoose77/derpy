@@ -7,8 +7,8 @@
     :copyright: Copyright 2008 by Armin Ronacher.
     :license: BSD.
 """
-from python.ast import *
 from derp.ast import *
+from python.ast import *
 
 BINOP_SYMBOLS = {}
 BINOP_SYMBOLS[Add] = '+'
@@ -130,9 +130,9 @@ class SourceGenerator(NodeVisitor):
 
         self.visit(node.value)
 
-
     def signature(self, node):
         want_comma = []
+
         def write_comma():
             if want_comma:
                 self.write(', ')
@@ -168,8 +168,8 @@ class SourceGenerator(NodeVisitor):
         self.write('assert ')
         self.visit(node.test)
         if node.msg is not None:
-           self.write(', ')
-           self.visit(node.msg)
+            self.write(', ')
+            self.visit(node.msg)
 
     def visit_Assign(self, node):
         self.newline(node)
@@ -211,7 +211,7 @@ class SourceGenerator(NodeVisitor):
         self.write('def %s(' % node.name)
         self.visit(node.args)
         if node.returns is None:
-           self.write('):')
+            self.write('):')
         else:
             self.write(') -> ')
             self.visit(node.returns)
@@ -220,6 +220,7 @@ class SourceGenerator(NodeVisitor):
 
     def visit_ClassDef(self, node):
         have_args = []
+
         def paren_or_comma():
             if have_args:
                 self.write(', ')
@@ -373,6 +374,7 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Call(self, node):
         want_comma = []
+
         def write_comma():
             if want_comma:
                 self.write(', ')
@@ -418,6 +420,7 @@ class SourceGenerator(NodeVisitor):
                     self.write(', ')
                 self.visit(item)
             self.write(right)
+
         return visit
 
     visit_List = sequence_visit('[', ']')
@@ -507,6 +510,7 @@ class SourceGenerator(NodeVisitor):
             for comprehension in node.generators:
                 self.visit(comprehension)
             self.write(right)
+
         return visit
 
     visit_ListComp = generator_visit('[', ']')

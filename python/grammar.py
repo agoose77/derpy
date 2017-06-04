@@ -1,11 +1,11 @@
 from collections import deque
 
+from derp.ast import iter_fields
+from derp.grammar import Grammar
 from derp.parsers import ter, star
 from derp.utilities import unpack_n
-from derp.grammar import Grammar
-from derp.ast import iter_fields
-
 from . import ast
+
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
 
@@ -323,7 +323,7 @@ def emit_first(args):
             defaults.append(value)
 
         elif defaults:
-            defaults.append(None) # So we can detect faulty args later
+            defaults.append(None)  # So we can detect faulty args later
         args.append(arg)
 
     kwonlyargs = ()
@@ -933,7 +933,7 @@ def generate_args_list(tfpdef):
     tfpdef_opt_ass = tfpdef & ~(ter('=') & g.test)
     tfpdef_kwargs = ter('**') & tfpdef
     return ((tfpdef_opt_ass & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & ~(
-            (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(
+        (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(
             ter(',') & tfpdef_kwargs)) | tfpdef_kwargs))) >> emit_first |
             (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) >> emit_varargs |
             tfpdef_kwargs >> emit_kwargs_only)
@@ -1053,9 +1053,9 @@ g.test_list = (g.test & +(ter(',') & g.test) & ~ter(',')) >> emit_test_list
 
 g.dict_or_set_maker = (
     (((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs) & (g.comp_for | (
-    +(ter(',') & ((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs))
-    & ~ter(',')))) >> emit_dict_maker | ((g.test | g.star_expr) &
-                                         (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))))
+        +(ter(',') & ((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs))
+        & ~ter(',')))) >> emit_dict_maker | ((g.test | g.star_expr) &
+                                             (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))))
     >> emit_set_maker
 )
 

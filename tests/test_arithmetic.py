@@ -1,5 +1,4 @@
 import unittest
-from derp.parsers import lit, Token, Recurrence, parse
 
 from derp.grammar import Grammar
 from derp.parsers import Token, parse, lit, alt

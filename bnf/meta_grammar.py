@@ -1,7 +1,6 @@
-from derp.parsers import lit
 from derp.grammar import Grammar
+from derp.parsers import lit
 from derp.utilities import unpack_n
-
 from . import ast
 
 
@@ -60,6 +59,7 @@ def emit_file(args):
 def emit_alt_parser(args):
     left, _, right = unpack_n(args, 3)
     return ast.AltParser(left, right)
+
 
 b = Grammar('meta-BNF')
 b.suite = (b.all_elements & ~b.suite) >> emit_root

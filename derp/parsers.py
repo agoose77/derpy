@@ -17,8 +17,8 @@ captures the progress of the parsing process. In other words, taking the derivat
 from abc import ABCMeta, abstractmethod
 from itertools import product
 
+from .caching import cached_property, memoized_n
 from .fields import FieldMeta
-from .caching import cached_property, memoized, memoized_n, recursive_memoize
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -68,7 +68,6 @@ class BaseParserMeta(FieldMeta, ABCMeta):
 
 
 class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
-
     def as_string(self):
         return self.__class__.__name__
 
@@ -140,7 +139,6 @@ class FixedPoint(BaseParser):
 
 
 class Alternate(FixedPoint, fields='left right'):
-
     def _compact(self, seen):
         if self not in seen:
             seen.add(self)
@@ -166,7 +164,6 @@ class Alternate(FixedPoint, fields='left right'):
 
 
 class Concatenate(FixedPoint, fields='left right'):
-
     def _compact(self, seen):
         if self not in seen:
             seen.add(self)
@@ -283,7 +280,6 @@ class Recurrence(FixedPoint):
 
 
 class Reduce(FixedPoint, fields='parser func'):
-
     def _compact(self, seen):
         if self not in seen:
             seen.add(self)

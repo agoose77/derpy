@@ -1,5 +1,4 @@
 class Colours:
-
     @staticmethod
     def red(text):
         return '\x1b[0;31;m' + text
@@ -32,4 +31,5 @@ def highlight_node_formatter(node_cls, match_format, other_format=no_op_formatte
         if isinstance(node, node_cls):
             return match_format(text)
         return other_format(text)
+
     return wrapper

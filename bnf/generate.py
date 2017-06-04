@@ -1,10 +1,9 @@
-from derp.parsers import Reduce, lit, Alternate, Concatenate, star, plus, opt
 from derp.ast import iter_child_nodes
 from derp.grammar import Grammar
+from derp.parsers import Reduce, lit, Alternate, Concatenate, star, plus, opt
 
 
 class YieldingNodeVisitor:
-
     def generic_visit(self, node):
         for child in iter_child_nodes(node):
             yield from self.visit(child)
@@ -17,7 +16,6 @@ class YieldingNodeVisitor:
 
 
 class ParserGenerator(YieldingNodeVisitor):
-
     def __init__(self, grammar_name):
         self.grammar = Grammar(grammar_name)
 

@@ -1,6 +1,5 @@
 from derp.ast import AST
 
-
 Grammar = AST.subclass("Grammar", "rules")
 ConcatParser = AST.subclass("ConcatParser", "left right")
 AltParser = AST.subclass("AltParser", "left right")

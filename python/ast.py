@@ -1,4 +1,5 @@
 from enum import Enum
+
 from derp.ast import AST
 
 # Modules ##################################################
@@ -124,7 +125,7 @@ arg = AST.subclass('arg', 'arg annotation')
 
 ArgUnpackTypes = Enum('ArgUnpackTypes', 'args kwargs none')
 
-keyword = AST.subclass('keyword', 'arg value')# arg=None for **kwargs
+keyword = AST.subclass('keyword', 'arg value')  # arg=None for **kwargs
 alias = AST.subclass('alias', 'name asname')
 withitem = AST.subclass('withitem', 'context_expr optional_vars')
 
