@@ -1,8 +1,8 @@
 _field_init_body = \
-    """
-    def __init__(self, {arg_list}):
-        {assignment_body}
-    """
+"""
+def __init__(self, {arg_list}):
+    {assignment_body}
+"""
 
 _field_assignment_stmt = "self.{0} = {0}"
 
