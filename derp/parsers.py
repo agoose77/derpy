@@ -80,8 +80,11 @@ class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
     def derive_null(self):
         pass
 
-    @recursive_memoize
     def compact(self):
+        return self.compact_seen(set())
+
+    def compact_seen(self, seen):
+        seen.add(self)
         return self
 
 
@@ -90,8 +93,8 @@ class LazyDerivative(BaseParser, fields='parser token'):
     Partially avoids non-terminating recursion.
     """
 
-    def compact(self):
-        return self.derivative.compact()
+    def compact_seen(self, seen):
+        return self.derivative.compact_seen(seen)
 
     @cached_property
     def derivative(self):
@@ -139,10 +142,11 @@ class Delayable(BaseParser):
 
 class Alternate(Delayable, fields='left right'):
 
-    @recursive_memoize
-    def compact(self):
-        self.left = self.left.compact()
-        self.right = self.right.compact()
+    def compact_seen(self, seen):
+        if self not in seen:
+            seen.add(self)
+            self.left = self.left.compact_seen(seen)
+            self.right = self.right.compact_seen(seen)
 
         if self.left is empty_parser:
             return self.right
@@ -163,10 +167,12 @@ class Alternate(Delayable, fields='left right'):
 
 
 class Concatenate(Delayable, fields='left right'):
-    @recursive_memoize
-    def compact(self):
-        self.left = self.left.compact()
-        self.right = self.right.compact()
+
+    def compact_seen(self, seen):
+        if self not in seen:
+            seen.add(self)
+            self.left = self.left.compact_seen(seen)
+            self.right = self.right.compact_seen(seen)
 
         if self.left is empty_parser or self.right is empty_parser:
             return empty_parser
@@ -208,8 +214,7 @@ class Concatenate(Delayable, fields='left right'):
 class Delta(BaseParser, fields='parser'):
     """Used to keep a record of skipped parse trees"""
 
-    @recursive_memoize
-    def compact(self):
+    def compact_seen(self, seen):
         return Epsilon(self.parser.derive_null())
 
     def derive(self, token):
@@ -268,9 +273,8 @@ class Epsilon(BaseParser, fields='_trees'):
 class Recurrence(Delayable):
     parser = None
 
-    @recursive_memoize
-    def compact(self):
-        return self.parser.compact()
+    def compact_seen(self, seen):
+        return self.parser.compact_seen(seen)
 
     def _derive(self, token):
         return self.parser.derive(token)  # .compact()
@@ -280,9 +284,11 @@ class Recurrence(Delayable):
 
 
 class Reduce(BaseParser, fields='parser func'):
-    @recursive_memoize
-    def compact(self):
-        self.parser = self.parser.compact()
+
+    def compact_seen(self, seen):
+        if self not in seen:
+            seen.add(self)
+            self.parser = self.parser.compact_seen(seen)
 
         if self.parser is empty_parser:
             return empty_parser
