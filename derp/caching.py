@@ -1,50 +1,49 @@
+from functools import wraps, update_wrapper
+
 cache_dict_type = dict
 
 
-def weakly_memoized(f):
+def memoized(func):
     """Weakly memoized function accepting 0 non-self args"""
     memo = cache_dict_type()
 
+    @wraps(func)
     def wrapper(self, memo=memo):
         try:
             return memo[self]
-
         except KeyError:
-            result = memo[self] = f.__get__(self)()
+            result = memo[self] = func.__get__(self)()
             return result
 
     return wrapper
 
 
-def weakly_memoized_n(f):
-    """Weakly memoized function accepting self and *args"""
+def memoized_n(func):
+    """Memoized function accepting self and *args"""
     memo = cache_dict_type()
 
+    @wraps(func)
     def wrapper(self, *args, memo=memo):
         try:
-            self_memo = memo[self]
+            result = memo[self, args]
         except KeyError:
-            self_memo = memo[self] = {}
-
-        try:
-            result = self_memo[args]
-        except KeyError:
-            result = self_memo[args] = f.__get__(self)(*args)
+            result = memo[self, args] = func.__get__(self)(*args)
         return result
 
     return wrapper
 
-weakly_memoized = weakly_memoized_n
 
-def fixed_point(f):
+def fixed_point(func):
+    """Compute the fixed point of a function F accepting no args"""
     memo = cache_dict_type()
 
+    @wraps(func)
     def wrapper(self, memo=memo):
         try:
             return memo[self]
         except KeyError:
             memo[self] = self
-            result = memo[self] = f.__get__(self)()
+            result = memo[self] = func.__get__(self)()
             return result
 
     return wrapper
@@ -56,6 +55,7 @@ class _CachedProperty:
     def __init__(self, func):
         self._func = func
         self._cache = cache_dict_type()
+        update_wrapper(self, func)
 
     def clear_cache(self):
         self._cache.clear()
@@ -66,5 +66,6 @@ class _CachedProperty:
         except KeyError:
             self._cache[instance] = result = self._func.__get__(instance, cls)()
             return result
+
 
 cached_property = _CachedProperty

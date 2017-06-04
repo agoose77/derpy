@@ -18,7 +18,7 @@ from abc import ABCMeta, abstractmethod
 from itertools import product
 
 from .fields import FieldMeta
-from .caching import cached_property, weakly_memoized, weakly_memoized_n, fixed_point
+from .caching import cached_property, memoized, memoized_n, fixed_point
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -117,11 +117,11 @@ class Delayable(BaseParser):
     def _derive_null(self):
         pass
 
-    @weakly_memoized_n
+    @memoized_n
     def derive(self, token):
         return LazyDerivative(self, token)
 
-    @weakly_memoized
+    @memoized
     def derive_null(self):
         """A stupid way to calculate the fixed point of the function"""
         if self._null_set is not None:
