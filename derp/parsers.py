@@ -159,10 +159,10 @@ class Alternate(FixedPoint, fields='left right'):
         return self.__class__(self.left.derive(token), self.right.derive(token))
 
     def _derive_null(self):
-        deriv_left = self.left.derive_null()
-        deriv_right = self.right.derive_null()
+        left_branch = self.left.derive_null()
+        right_branch = self.right.derive_null()
 
-        return deriv_left | deriv_right
+        return left_branch | right_branch
 
 
 class Concatenate(FixedPoint, fields='left right'):
