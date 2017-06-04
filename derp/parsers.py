@@ -243,7 +243,7 @@ class Empty(BaseParser):
 
 class Epsilon(BaseParser, fields='_trees'):
     def __new__(cls, trees):
-        if not isinstance(trees, set):
+        if not type(trees) is set:
             raise ValueError(trees)
 
         if not trees:
