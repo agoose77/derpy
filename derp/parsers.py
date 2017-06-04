@@ -81,9 +81,9 @@ class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
         pass
 
     def compact(self):
-        return self.compact_seen(set())
+        return self._compact(set())
 
-    def compact_seen(self, seen):
+    def _compact(self, seen):
         seen.add(self)
         return self
 
@@ -93,8 +93,8 @@ class LazyDerivative(BaseParser, fields='parser token'):
     Partially avoids non-terminating recursion.
     """
 
-    def compact_seen(self, seen):
-        return self.derivative.compact_seen(seen)
+    def _compact(self, seen):
+        return self.derivative._compact(seen)
 
     @cached_property
     def derivative(self):
@@ -107,7 +107,7 @@ class LazyDerivative(BaseParser, fields='parser token'):
         return self.derivative.derive_null()
 
 
-class Delayable(BaseParser):
+class FixedPoint(BaseParser):
     """Delays derivative evaluation to avoid non-terminating recursion"""
 
     _null_set = None
@@ -124,7 +124,6 @@ class Delayable(BaseParser):
     def derive(self, token):
         return LazyDerivative(self, token)
 
-    @memoized
     def derive_null(self):
         """A stupid way to calculate the fixed point of the function"""
         if self._null_set is not None:
@@ -140,13 +139,13 @@ class Delayable(BaseParser):
                 return self._null_set
 
 
-class Alternate(Delayable, fields='left right'):
+class Alternate(FixedPoint, fields='left right'):
 
-    def compact_seen(self, seen):
+    def _compact(self, seen):
         if self not in seen:
             seen.add(self)
-            self.left = self.left.compact_seen(seen)
-            self.right = self.right.compact_seen(seen)
+            self.left = self.left._compact(seen)
+            self.right = self.right._compact(seen)
 
         if self.left is empty_parser:
             return self.right
@@ -166,13 +165,13 @@ class Alternate(Delayable, fields='left right'):
         return deriv_left | deriv_right
 
 
-class Concatenate(Delayable, fields='left right'):
+class Concatenate(FixedPoint, fields='left right'):
 
-    def compact_seen(self, seen):
+    def _compact(self, seen):
         if self not in seen:
             seen.add(self)
-            self.left = self.left.compact_seen(seen)
-            self.right = self.right.compact_seen(seen)
+            self.left = self.left._compact(seen)
+            self.right = self.right._compact(seen)
 
         if self.left is empty_parser or self.right is empty_parser:
             return empty_parser
@@ -205,16 +204,16 @@ class Concatenate(Delayable, fields='left right'):
                          cls(Delta(self.left), self.right.derive(token)))
 
     def _derive_null(self):
-        deriv_left = self.left.derive_null()
-        deriv_right = self.right.derive_null()
+        left_branch = self.left.derive_null()
+        right_branch = self.right.derive_null()
 
-        return set(product(deriv_left, deriv_right))
+        return set(product(left_branch, right_branch))
 
 
 class Delta(BaseParser, fields='parser'):
     """Used to keep a record of skipped parse trees"""
 
-    def compact_seen(self, seen):
+    def _compact(self, seen):
         return Epsilon(self.parser.derive_null())
 
     def derive(self, token):
@@ -270,11 +269,11 @@ class Epsilon(BaseParser, fields='_trees'):
         return self._trees
 
 
-class Recurrence(Delayable):
+class Recurrence(FixedPoint):
     parser = None
 
-    def compact_seen(self, seen):
-        return self.parser.compact_seen(seen)
+    def _compact(self, seen):
+        return self.parser._compact(seen)
 
     def _derive(self, token):
         return self.parser.derive(token)  # .compact()
@@ -283,12 +282,12 @@ class Recurrence(Delayable):
         return self.parser.derive_null()
 
 
-class Reduce(BaseParser, fields='parser func'):
+class Reduce(FixedPoint, fields='parser func'):
 
-    def compact_seen(self, seen):
+    def _compact(self, seen):
         if self not in seen:
             seen.add(self)
-            self.parser = self.parser.compact_seen(seen)
+            self.parser = self.parser._compact(seen)
 
         if self.parser is empty_parser:
             return empty_parser
@@ -308,10 +307,10 @@ class Reduce(BaseParser, fields='parser func'):
         else:
             return self
 
-    def derive(self, token):
+    def _derive(self, token):
         return self.__class__(self.parser.derive(token), self.func)
 
-    def derive_null(self):
+    def _derive_null(self):
         return set(map(self.func, self.parser.derive_null()))
 
 
