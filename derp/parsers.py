@@ -18,7 +18,7 @@ from abc import ABCMeta, abstractmethod
 from itertools import product
 
 from .fields import FieldMeta
-from .utilities import memoized_property, weakly_memoized, weakly_memoized_n, memoized_compact
+from .caching import cached_property, weakly_memoized, weakly_memoized_n, fixed_point
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -68,6 +68,7 @@ class BaseParserMeta(FieldMeta, ABCMeta):
 
 
 class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
+
     def as_string(self):
         return self.__class__.__name__
 
@@ -79,21 +80,20 @@ class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
     def derive_null(self):
         pass
 
-    @memoized_compact
+    @fixed_point
     def compact(self):
         return self
 
 
 class LazyDerivative(BaseParser, fields='parser token'):
-    """Lazy derivative evaluation of derivative of a parser wrt a given token.
+    """Lazy derivative evaluation of derivative of a parser w.r.t a given token.
     Partially avoids non-terminating recursion.
     """
 
-    @memoized_compact
     def compact(self):
         return self.derivative.compact()
 
-    @memoized_property
+    @cached_property
     def derivative(self):
         return self.parser._derive(self.token)
 
@@ -123,6 +123,7 @@ class Delayable(BaseParser):
 
     @weakly_memoized
     def derive_null(self):
+        """A stupid way to calculate the fixed point of the function"""
         if self._null_set is not None:
             return self._null_set
 
@@ -137,7 +138,8 @@ class Delayable(BaseParser):
 
 
 class Alternate(Delayable, fields='left right'):
-    @memoized_compact
+
+    @fixed_point
     def compact(self):
         self.left = self.left.compact()
         self.right = self.right.compact()
@@ -161,7 +163,7 @@ class Alternate(Delayable, fields='left right'):
 
 
 class Concatenate(Delayable, fields='left right'):
-    @memoized_compact
+    @fixed_point
     def compact(self):
         self.left = self.left.compact()
         self.right = self.right.compact()
@@ -206,7 +208,7 @@ class Concatenate(Delayable, fields='left right'):
 class Delta(BaseParser, fields='parser'):
     """Used to keep a record of skipped parse trees"""
 
-    @memoized_compact
+    @fixed_point
     def compact(self):
         return Epsilon(self.parser.derive_null())
 
@@ -266,7 +268,7 @@ class Epsilon(BaseParser, fields='_trees'):
 class Recurrence(Delayable):
     parser = None
 
-    @memoized_compact
+    @fixed_point
     def compact(self):
         return self.parser.compact()
 
@@ -278,7 +280,7 @@ class Recurrence(Delayable):
 
 
 class Reduce(BaseParser, fields='parser func'):
-    @memoized_compact
+    @fixed_point
     def compact(self):
         self.parser = self.parser.compact()
 
