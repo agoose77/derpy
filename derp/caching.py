@@ -33,7 +33,7 @@ def memoized_n(func):
     return wrapper
 
 
-def fixed_point(func):
+def recursive_memoize(func):
     """Compute the fixed point of a function F accepting no args"""
     memo = cache_dict_type()
 

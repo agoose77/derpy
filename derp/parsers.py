@@ -18,7 +18,7 @@ from abc import ABCMeta, abstractmethod
 from itertools import product
 
 from .fields import FieldMeta
-from .caching import cached_property, memoized, memoized_n, fixed_point
+from .caching import cached_property, memoized, memoized_n, recursive_memoize
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -80,7 +80,7 @@ class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
     def derive_null(self):
         pass
 
-    @fixed_point
+    @recursive_memoize
     def compact(self):
         return self
 
@@ -139,7 +139,7 @@ class Delayable(BaseParser):
 
 class Alternate(Delayable, fields='left right'):
 
-    @fixed_point
+    @recursive_memoize
     def compact(self):
         self.left = self.left.compact()
         self.right = self.right.compact()
@@ -163,7 +163,7 @@ class Alternate(Delayable, fields='left right'):
 
 
 class Concatenate(Delayable, fields='left right'):
-    @fixed_point
+    @recursive_memoize
     def compact(self):
         self.left = self.left.compact()
         self.right = self.right.compact()
@@ -208,7 +208,7 @@ class Concatenate(Delayable, fields='left right'):
 class Delta(BaseParser, fields='parser'):
     """Used to keep a record of skipped parse trees"""
 
-    @fixed_point
+    @recursive_memoize
     def compact(self):
         return Epsilon(self.parser.derive_null())
 
@@ -268,7 +268,7 @@ class Epsilon(BaseParser, fields='_trees'):
 class Recurrence(Delayable):
     parser = None
 
-    @fixed_point
+    @recursive_memoize
     def compact(self):
         return self.parser.compact()
 
@@ -280,7 +280,7 @@ class Recurrence(Delayable):
 
 
 class Reduce(BaseParser, fields='parser func'):
-    @fixed_point
+    @recursive_memoize
     def compact(self):
         self.parser = self.parser.compact()
 
