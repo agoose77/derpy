@@ -1,19 +1,19 @@
 class Colours:
     @staticmethod
     def red(text):
-        return '\x1b[0;31;m' + text
+        return  '\033[31m{}\033[0m'.format(text)
 
     @staticmethod
     def blue(text):
-        return '\x1b[0;34;m' + text
+        return  '\033[34m{}\033[0m'.format(text)
 
     @staticmethod
     def green(text):
-        return '\x1b[0;32;m' + text
+        return  '\033[32m{}\033[0m'.format(text)
 
     @staticmethod
     def white(text):
-        return '\33[0;37;m' + text
+        return  '\033[37m{}\033[0m'.format(text)
 
 
 def cyclic_colour_formatter(node, level, text):

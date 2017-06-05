@@ -2,7 +2,7 @@ from collections import deque
 
 from derp.ast import iter_fields
 from derp.grammar import Grammar
-from derp.parsers import ter, star
+from derp.parsers import lit, star
 from derp.utilities import unpack_n
 from . import ast
 
@@ -917,161 +917,161 @@ def emit_simple_stmt_suite(stmt_or_stmts):
 
 g = Grammar('Python')
 
-g.single_input = (ter('NEWLINE') | g.simple_stmt | g.compound_stmt) & ter('NEWLINE')
+g.single_input = (lit('NEWLINE') | g.simple_stmt | g.compound_stmt) & lit('NEWLINE')
 # g.eval_input = g.test_list & +ter('NEWLINE') & ter('ENDMARKER')
-g.file_input = (+(ter('NEWLINE') | g.stmt) & ter('ENDMARKER')) >> emit_file_input
+g.file_input = (+(lit('NEWLINE') | g.stmt) & lit('ENDMARKER')) >> emit_file_input
 
-g.decorator = (ter('@') & g.dotted_name & ~(ter('(') & ~g.arg_list & ter(')')) & ter('NEWLINE')) >> emit_decorator
+g.decorator = (lit('@') & g.dotted_name & ~(lit('(') & ~g.arg_list & lit(')')) & lit('NEWLINE')) >> emit_decorator
 g.decorators = star(g.decorator)
 
 g.decorated = (g.decorators & (g.class_def | g.func_def)) >> emit_decorated  # Ignore async
 
-g.func_def = (ter('def') & ter('ID') & g.parameters & ~(ter('->') & g.test) & ter(':') & g.suite) >> emit_func_def
+g.func_def = (lit('def') & lit('ID') & g.parameters & ~(lit('->') & g.test) & lit(':') & g.suite) >> emit_func_def
 
 
 def generate_args_list(tfpdef):
-    tfpdef_opt_ass = tfpdef & ~(ter('=') & g.test)
-    tfpdef_kwargs = ter('**') & tfpdef
-    return ((tfpdef_opt_ass & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & ~(
-        (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(
-            ter(',') & tfpdef_kwargs)) | tfpdef_kwargs))) >> emit_first |
-            (ter('*') & ~tfpdef & +(ter(',') & tfpdef_opt_ass) & ~(ter(',') & tfpdef_kwargs)) >> emit_varargs |
+    tfpdef_opt_ass = tfpdef & ~(lit('=') & g.test)
+    tfpdef_kwargs = lit('**') & tfpdef
+    return ((tfpdef_opt_ass & +(lit(',') & tfpdef_opt_ass) & ~(lit(',') & ~(
+        (lit('*') & ~tfpdef & +(lit(',') & tfpdef_opt_ass) & ~(
+            lit(',') & tfpdef_kwargs)) | tfpdef_kwargs))) >> emit_first |
+            (lit('*') & ~tfpdef & +(lit(',') & tfpdef_opt_ass) & ~(lit(',') & tfpdef_kwargs)) >> emit_varargs |
             tfpdef_kwargs >> emit_kwargs_only)
 
 
-g.parameters = (ter('(') & ~g.typed_args_list & ter(')')) >> emit_params
+g.parameters = (lit('(') & ~g.typed_args_list & lit(')')) >> emit_params
 
 g.typed_args_list = generate_args_list(g.tfpdef)
-g.tfpdef = (ter('ID') & ~(ter(':') & g.test)) >> emit_tfpdef
+g.tfpdef = (lit('ID') & ~(lit(':') & g.test)) >> emit_tfpdef
 
 g.var_args_list = generate_args_list(g.vfpdef)
-g.vfpdef = ter('ID')
+g.vfpdef = lit('ID')
 
 g.stmt = g.simple_stmt | g.compound_stmt
 
-g.simple_stmt = (g.small_stmt & +(ter(';') & g.small_stmt) & ~ter(';') & ter(
+g.simple_stmt = (g.small_stmt & +(lit(';') & g.small_stmt) & ~lit(';') & lit(
     'NEWLINE')) >> emit_simple_stmt  # Single line multistmts emit tuple, others emit ast nodes
 g.small_stmt = (
     g.expr_stmt | g.del_stmt | g.pass_stmt | g.flow_stmt | g.import_stmt | g.global_stmt | g.nonlocal_stmt | g.assert_stmt)
 g.expr_stmt = (g.test_list_star_expr & g.augassign & (g.yield_expr | g.test_list)) >> emit_expr_augassign | \
-              (g.test_list_star_expr & +(ter('=') & (g.yield_expr | g.test_list_star_expr))) >> emit_expr_assigns
-g.test_list_star_expr = ((g.test | g.star_expr) & +(ter(',') & (g.test | g.star_expr)) & ~ter(
+              (g.test_list_star_expr & +(lit('=') & (g.yield_expr | g.test_list_star_expr))) >> emit_expr_assigns
+g.test_list_star_expr = ((g.test | g.star_expr) & +(lit(',') & (g.test | g.star_expr)) & ~lit(
     ',')) >> emit_test_list_star_expr
-g.augassign = ter('+=') | ter('-=') | ter('*=') | ter('/=') | ter('%=') | ter('&=') | ter('|=') | ter('^=') \
-              | ter('<<=') | ter('>>=') | ter('**=') | ter('//=') | ter('@=')
-g.del_stmt = (ter('del') & g.expr_list) >> emit_del
-g.pass_stmt = ter('pass') >> emit_pass
+g.augassign = lit('+=') | lit('-=') | lit('*=') | lit('/=') | lit('%=') | lit('&=') | lit('|=') | lit('^=') \
+              | lit('<<=') | lit('>>=') | lit('**=') | lit('//=') | lit('@=')
+g.del_stmt = (lit('del') & g.expr_list) >> emit_del
+g.pass_stmt = lit('pass') >> emit_pass
 g.flow_stmt = g.break_stmt | g.continue_stmt | g.return_stmt | g.raise_stmt | g.yield_stmt
-g.break_stmt = ter('break') >> emit_break
-g.continue_stmt = ter('continue') >> emit_continue
-g.return_stmt = (ter('return') & ~g.test_list) >> emit_return
+g.break_stmt = lit('break') >> emit_break
+g.continue_stmt = lit('continue') >> emit_continue
+g.return_stmt = (lit('return') & ~g.test_list) >> emit_return
 g.yield_stmt = g.yield_expr
 
-g.raise_stmt = (ter('raise') & ~(g.test & ~(ter('from') & g.test))) >> emit_raise
+g.raise_stmt = (lit('raise') & ~(g.test & ~(lit('from') & g.test))) >> emit_raise
 g.import_stmt = g.import_name | g.import_from
-g.import_name = (ter('import') & g.dotted_as_names) >> emit_import
-g.import_from = (ter('from') &
-                 ((+(ter('.') | ter('...')) & g.dotted_name) >> emit_import_from_dotted_name | star(
-                     ter('.') | ter('...')) >> emit_import_from_no_name)
-                 & ter('import') & (ter('*') >> emit_import_from_all | (
-    ter('(') & g.import_as_names & ter(')')) >> emit_import_from_names_paren | g.import_as_names)) >> emit_import_from
+g.import_name = (lit('import') & g.dotted_as_names) >> emit_import
+g.import_from = (lit('from') &
+                 ((+(lit('.') | lit('...')) & g.dotted_name) >> emit_import_from_dotted_name | star(
+                     lit('.') | lit('...')) >> emit_import_from_no_name)
+                 & lit('import') & (lit('*') >> emit_import_from_all | (
+    lit('(') & g.import_as_names & lit(')')) >> emit_import_from_names_paren | g.import_as_names)) >> emit_import_from
 
 # from & ((ALT & import)), aLT)
-g.import_as_name = (ter('ID') & ~(ter('as') & ter('ID'))) >> emit_alias
-g.import_as_names = (g.import_as_name & +(ter(',') & g.import_as_name) & ~ter(',')) >> emit_import_from_names
-g.dotted_name = (ter('ID') & +(ter('.') & ter('ID'))) >> emit_dotted_name
+g.import_as_name = (lit('ID') & ~(lit('as') & lit('ID'))) >> emit_alias
+g.import_as_names = (g.import_as_name & +(lit(',') & g.import_as_name) & ~lit(',')) >> emit_import_from_names
+g.dotted_name = (lit('ID') & +(lit('.') & lit('ID'))) >> emit_dotted_name
 
-g.dotted_as_name = (g.dotted_name & ~(ter('as') & ter('ID'))) >> emit_alias
-g.dotted_as_names = (g.dotted_as_name & +(ter(',') & g.dotted_as_name)) >> emit_dotted_as_names
-g.global_stmt = (ter('global') & ter('ID') & +(ter(',') & ter('ID'))) >> emit_global
-g.nonlocal_stmt = (ter('nonlocal') & ter('ID') & +(ter(',') & ter('ID'))) >> emit_nonlocal
-g.assert_stmt = (ter('assert') & g.test & ~(ter(',') & g.test)) >> emit_assert
+g.dotted_as_name = (g.dotted_name & ~(lit('as') & lit('ID'))) >> emit_alias
+g.dotted_as_names = (g.dotted_as_name & +(lit(',') & g.dotted_as_name)) >> emit_dotted_as_names
+g.global_stmt = (lit('global') & lit('ID') & +(lit(',') & lit('ID'))) >> emit_global
+g.nonlocal_stmt = (lit('nonlocal') & lit('ID') & +(lit(',') & lit('ID'))) >> emit_nonlocal
+g.assert_stmt = (lit('assert') & g.test & ~(lit(',') & g.test)) >> emit_assert
 
 g.compound_stmt = g.if_stmt | g.while_stmt | g.for_stmt | g.try_stmt | g.with_stmt | g.func_def | g.class_def | g.decorated
-g.if_stmt = (ter('if') & g.test & ter(':') & g.suite & +(ter('elif') & g.test & ter(':') & g.suite) & ~(
-    ter('else') & ter(':') & g.suite)) >> emit_if
-g.while_stmt = (ter('while') & g.test & ter(':') & g.suite & ~(ter('else') & ter(':') & g.suite)) >> emit_while
-g.for_stmt = (ter('for') & g.expr_list & ter('in') & g.test_list & ter(':') & g.suite & ~(
-    ter('else') & ter(':') & g.suite)) >> emit_for
-g.try_stmt = (ter('try') & ter(':') & g.suite &
-              ((star(g.except_clause & ter(':') & g.suite) &
-                ~(ter('else') & ter(':') & g.suite) &
-                ~(ter('finally') & ter(':') & g.suite)) >> emit_try_except_else_finally |
+g.if_stmt = (lit('if') & g.test & lit(':') & g.suite & +(lit('elif') & g.test & lit(':') & g.suite) & ~(
+    lit('else') & lit(':') & g.suite)) >> emit_if
+g.while_stmt = (lit('while') & g.test & lit(':') & g.suite & ~(lit('else') & lit(':') & g.suite)) >> emit_while
+g.for_stmt = (lit('for') & g.expr_list & lit('in') & g.test_list & lit(':') & g.suite & ~(
+    lit('else') & lit(':') & g.suite)) >> emit_for
+g.try_stmt = (lit('try') & lit(':') & g.suite &
+              ((star(g.except_clause & lit(':') & g.suite) &
+                ~(lit('else') & lit(':') & g.suite) &
+                ~(lit('finally') & lit(':') & g.suite)) >> emit_try_except_else_finally |
                # Just finally no except
-               (ter('finally') & ter(':') & g.suite) >> emit_try_finally
+               (lit('finally') & lit(':') & g.suite) >> emit_try_finally
                )) >> emit_try
-g.with_stmt = (ter('with') & g.with_item & +(ter(',') & g.with_item) & ter(':') & g.suite) >> emit_with
+g.with_stmt = (lit('with') & g.with_item & +(lit(',') & g.with_item) & lit(':') & g.suite) >> emit_with
 
-g.with_item = (g.test & ~(ter('as') & g.expr)) >> emit_alias
-g.except_clause = ter('except') & ~((g.test & ~(ter('as') & ter('ID'))) >> emit_alias)
+g.with_item = (g.test & ~(lit('as') & g.expr)) >> emit_alias
+g.except_clause = lit('except') & ~((g.test & ~(lit('as') & lit('ID'))) >> emit_alias)
 
-g.suite = g.simple_stmt >> emit_simple_stmt_suite | (ter('NEWLINE') & ter('INDENT') & star(g.stmt) & ter(
+g.suite = g.simple_stmt >> emit_simple_stmt_suite | (lit('NEWLINE') & lit('INDENT') & star(g.stmt) & lit(
     'DEDENT')) >> emit_nl_indent_one_plus_dedent_suite  # Always emit flat tuple of nodes
-g.test = (g.or_test & ~(ter('if') & g.or_test & ter('else') & g.test)) >> emit_test_left | g.lambda_def
+g.test = (g.or_test & ~(lit('if') & g.or_test & lit('else') & g.test)) >> emit_test_left | g.lambda_def
 g.test_no_cond = g.or_test | g.lambda_def_no_cond
 
-g.lambda_def = (ter('lambda') & ~g.var_args_list & ter(':') & g.test) >> emit_lambda_def
-g.lambda_def_no_cond = ter('lambda') & ~g.var_args_list & ter(':') & g.test_no_cond >> emit_lambda_def
-g.or_test = (g.and_test & +(ter('or') & g.and_test)) >> emit_or_test
-g.and_test = (g.not_test & +(ter('and') & g.not_test)) >> emit_and_test
-g.not_test = (ter('not') & g.not_test) >> emit_not_test | g.comparison
+g.lambda_def = (lit('lambda') & ~g.var_args_list & lit(':') & g.test) >> emit_lambda_def
+g.lambda_def_no_cond = lit('lambda') & ~g.var_args_list & lit(':') & g.test_no_cond >> emit_lambda_def
+g.or_test = (g.and_test & +(lit('or') & g.and_test)) >> emit_or_test
+g.and_test = (g.not_test & +(lit('and') & g.not_test)) >> emit_and_test
+g.not_test = (lit('not') & g.not_test) >> emit_not_test | g.comparison
 g.comparison = (g.expr & +(g.comp_op & g.expr)) >> emit_comparison
 
-g.comp_op = ter('<') | ter('>') | ter('==') | ter('>=') | ter('<=') | ter('<>') | ter('!=') | ter('in') | ter(
-    'not') & ter('in') | ter('is') | ter('is') & ter('not')
-g.star_expr = ter('*') & g.expr
-g.expr = (g.xor_expr & +(ter('|') & g.xor_expr)) >> emit_expr
+g.comp_op = lit('<') | lit('>') | lit('==') | lit('>=') | lit('<=') | lit('<>') | lit('!=') | lit('in') | lit(
+    'not') & lit('in') | lit('is') | lit('is') & lit('not')
+g.star_expr = lit('*') & g.expr
+g.expr = (g.xor_expr & +(lit('|') & g.xor_expr)) >> emit_expr
 
-g.xor_expr = (g.and_expr & +(ter('^') & g.and_expr)) >> emit_xor_expr
-g.and_expr = (g.shift_expr & +(ter('&') & g.shift_expr)) >> emit_and_expr
-g.shift_expr = (g.arith_expr & +((ter('<<') | ter('>>')) & g.arith_expr)) >> emit_shift_expr
-g.arith_expr = (g.term & +((ter('+') | ter('-')) & g.term)) >> emit_arith_exor
-g.term = (g.factor & +((ter('*') | ter('@') | ter('/') | ter('%') | ter('//')) & g.factor)) >> emit_term
-g.factor = ((ter('+') | ter('-') | ter('~')) & g.factor) >> emit_factor | g.power
-g.power = (g.atom_expr & ~(ter('**') & g.factor)) >> emit_power
+g.xor_expr = (g.and_expr & +(lit('^') & g.and_expr)) >> emit_xor_expr
+g.and_expr = (g.shift_expr & +(lit('&') & g.shift_expr)) >> emit_and_expr
+g.shift_expr = (g.arith_expr & +((lit('<<') | lit('>>')) & g.arith_expr)) >> emit_shift_expr
+g.arith_expr = (g.term & +((lit('+') | lit('-')) & g.term)) >> emit_arith_exor
+g.term = (g.factor & +((lit('*') | lit('@') | lit('/') | lit('%') | lit('//')) & g.factor)) >> emit_term
+g.factor = ((lit('+') | lit('-') | lit('~')) & g.factor) >> emit_factor | g.power
+g.power = (g.atom_expr & ~(lit('**') & g.factor)) >> emit_power
 
 g.atom_expr = (g.atom & +g.trailer) >> emit_atom_expr
-g.atom = ((ter('(') & ~(g.yield_expr | g.test_list_comp) & ter(')')) >> emit_generator_comp |
-          (ter('[') & ~(g.yield_expr | g.test_list_comp) & ter(']')) >> emit_list_comp |
-          (ter('{') & ~g.dict_or_set_maker & ter('}')) >> emit_dict_comp |
-          ter('ID') >> emit_id | ter('NUMBER') >> emit_num | star(ter('LIT')) >> emit_lit |
-          ter('...') >> emit_ellipsis | ter('None') >> emit_name_constant | ter('True') >> emit_name_constant |
-          ter('False') >> emit_name_constant)
+g.atom = ((lit('(') & ~(g.yield_expr | g.test_list_comp) & lit(')')) >> emit_generator_comp |
+          (lit('[') & ~(g.yield_expr | g.test_list_comp) & lit(']')) >> emit_list_comp |
+          (lit('{') & ~g.dict_or_set_maker & lit('}')) >> emit_dict_comp |
+          lit('ID') >> emit_id | lit('NUMBER') >> emit_num | star(lit('LIT')) >> emit_lit |
+          lit('...') >> emit_ellipsis | lit('None') >> emit_name_constant | lit('True') >> emit_name_constant |
+          lit('False') >> emit_name_constant)
 
-g.test_list_comp = ((g.test | g.star_expr) & (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))
+g.test_list_comp = ((g.test | g.star_expr) & (g.comp_for | (+(lit(',') & (g.test | g.star_expr)) & ~lit(','))
                                               >> emit_list_exprs)) >> emit_test_list_comp
-g.trailer = (ter('(') & ~g.arg_list & ter(')')) >> emit_trailer_call | \
-            (ter('[') & g.subscript_list & ter(']')) >> emit_trailer_subscript | \
-            (ter('.') & ter('ID')) >> emit_trailer_attr
-g.arg_list = (g.argument & +(ter(',') & g.argument) & ~ter(',')) >> emit_arg_list
-g.subscript_list = (g.subscript & +(ter(',') & g.subscript) & ~ter(',')) >> emit_subscript_list
+g.trailer = (lit('(') & ~g.arg_list & lit(')')) >> emit_trailer_call | \
+            (lit('[') & g.subscript_list & lit(']')) >> emit_trailer_subscript | \
+            (lit('.') & lit('ID')) >> emit_trailer_attr
+g.arg_list = (g.argument & +(lit(',') & g.argument) & ~lit(',')) >> emit_arg_list
+g.subscript_list = (g.subscript & +(lit(',') & g.subscript) & ~lit(',')) >> emit_subscript_list
 
-g.subscript = g.test | (~g.test & ter(':') & ~g.test & ~g.slice_op) >> emit_slice
-g.slice_op = ter(':') & ~g.test
-g.expr_list = ((g.expr | g.star_expr) & +(ter(',') & (g.expr | g.star_expr)) & ~ter(',')) >> emit_expr_list
-g.test_list = (g.test & +(ter(',') & g.test) & ~ter(',')) >> emit_test_list
+g.subscript = g.test | (~g.test & lit(':') & ~g.test & ~g.slice_op) >> emit_slice
+g.slice_op = lit(':') & ~g.test
+g.expr_list = ((g.expr | g.star_expr) & +(lit(',') & (g.expr | g.star_expr)) & ~lit(',')) >> emit_expr_list
+g.test_list = (g.test & +(lit(',') & g.test) & ~lit(',')) >> emit_test_list
 
 g.dict_or_set_maker = (
-    (((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs) & (g.comp_for | (
-        +(ter(',') & ((g.test & ter(':') & g.test) >> emit_dict_pair | (ter('**') & g.expr) >> emit_dict_kwargs))
-        & ~ter(',')))) >> emit_dict_maker | ((g.test | g.star_expr) &
-                                             (g.comp_for | (+(ter(',') & (g.test | g.star_expr)) & ~ter(','))))
+    (((g.test & lit(':') & g.test) >> emit_dict_pair | (lit('**') & g.expr) >> emit_dict_kwargs) & (g.comp_for | (
+        +(lit(',') & ((g.test & lit(':') & g.test) >> emit_dict_pair | (lit('**') & g.expr) >> emit_dict_kwargs))
+        & ~lit(',')))) >> emit_dict_maker | ((g.test | g.star_expr) &
+                                             (g.comp_for | (+(lit(',') & (g.test | g.star_expr)) & ~lit(','))))
     >> emit_set_maker
 )
 
 g.argument = ((g.test & ~g.comp_for) >> emit_arg |
-              (g.test & ter('=') & g.test) >> emit_keyword |
-              (ter('**') & g.test) >> emit_kwargs |
-              (ter('*') & g.test) >> emit_starred)
+              (g.test & lit('=') & g.test) >> emit_keyword |
+              (lit('**') & g.test) >> emit_kwargs |
+              (lit('*') & g.test) >> emit_starred)
 g.comp_iter = g.comp_for | g.comp_if
 
-g.class_def = (ter('class') & ter('ID') & ~(ter('(') & ~g.arg_list & ter(')')) & ter(':') & g.suite) >> emit_class_def
+g.class_def = (lit('class') & lit('ID') & ~(lit('(') & ~g.arg_list & lit(')')) & lit(':') & g.suite) >> emit_class_def
 
-g.comp_for = (ter('for') & g.expr_list & ter('in') & g.or_test & ~g.comp_iter) >> emit_comp_for
-g.comp_if = (ter('if') & g.test_no_cond & ~g.comp_iter) >> emit_comp_if
+g.comp_for = (lit('for') & g.expr_list & lit('in') & g.or_test & ~g.comp_iter) >> emit_comp_for
+g.comp_if = (lit('if') & g.test_no_cond & ~g.comp_iter) >> emit_comp_if
 
-g.yield_expr = (ter('yield') & ~g.yield_arg) >> emit_yield_expr
-g.yield_arg = (ter('from') & g.test) | g.test_list
+g.yield_expr = (lit('yield') & ~g.yield_arg) >> emit_yield_expr
+g.yield_arg = (lit('from') & g.test) | g.test_list
 
 # Check all parsers were defined
 g.ensure_parsers_defined()

@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 
-from bnf.generate import ParserGenerator
-from bnf.meta_grammar import b
-from bnf.tokenizer import tokenize_file
+from ebnf.generate import ParserGenerator
+from ebnf.meta_grammar import b
+from ebnf.tokenizer import tokenize_file
 from derp.ast import to_string
 from derp.parsers import parse
 
@@ -17,19 +17,22 @@ class CustomParserGenerator(ParserGenerator):
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='BNF parser generator')
-    parser.add_argument('-filepath', default="sample.bnf")
+    parser.add_argument('-filepath', default="sample.ebnf")
     parser.add_argument('-sample', default="sample.txt")
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.filepath))
     print("Parsing BNF grammar: {} with {} tokens".format(args.filepath, len(tokens)))
-
+    tokens = list(tokens);print(tokens)
     # Print parse of BNF
     import time
     start = time.monotonic()
-    result = parse(b.file_input, tokens)
+    result = parse(b.grammar, tokens)
     stop = time.monotonic()
     print(f"{stop-start}")
+    print(f"{len(result)} results")
+    from pprint import pprint
+    pprint(result)
 
     # root = result.pop()
     # print(to_string(root))

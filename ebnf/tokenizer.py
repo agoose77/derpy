@@ -1,3 +1,9 @@
+"""Primitive example of a tokenizer for a BNF grammar.
+
+Implemented using state machine "tokenizers". Given that there are few cases where the tokenizer is context dependent,
+such cases are implemented with nested tokenizers, and thereafter each tokenizer is tested whether it can handle a 
+character until one is found
+"""
 from abc import ABC, abstractclassmethod, abstractmethod
 from itertools import chain
 from ast import literal_eval
@@ -5,13 +11,11 @@ from derp.parsers import Token
 
 
 def get_root_tokenizers():
-    return LitTokenizer, IDTokenizer, ParenTokenizer, ColonTokenizer, GreedyTokenizer, OnePlusTokenizer, AltTokenizer, \
-           NewlineTokenizer, FormattingTokenizer, CommentTokenizer
+    return LitTokenizer, IDTokenizer, ParenTokenizer, SymbolTokenizer, NewlineTokenizer, FormattingTokenizer, CommentTokenizer
 
 
 def get_paren_tokenizers():
-    return LitTokenizer, IDTokenizer, ParenTokenizer, ColonTokenizer, GreedyTokenizer, OnePlusTokenizer, AltTokenizer, \
-           NewlineConsumerTokenizer, FormattingTokenizer, CommentTokenizer
+    return LitTokenizer, IDTokenizer, ParenTokenizer, SymbolTokenizer, NewlineConsumerTokenizer, FormattingTokenizer, CommentTokenizer
 
 
 class TokenizerIsClosed(Exception):
@@ -20,7 +24,6 @@ class TokenizerIsClosed(Exception):
 
 
 class BaseTokenizer(ABC):
-
     @abstractclassmethod
     def should_enter(self, char):
         pass
@@ -30,9 +33,15 @@ class BaseTokenizer(ABC):
         pass
 
     def finish(self):
+        """Finish such that next time tokenizer asked to handle character, it will raise TokenizerIsClosed"""
         self.handle_char = self._raise_closed
+        self.should_enter = self._raise_closed
 
     def abort(self):
+        """Finish such that next time tokenizer asked to handle character, it will raise TokenizerIsClosed.
+        
+        Raises TokenizerIsClosed exception
+        """
         self.finish()
         raise TokenizerIsClosed
 
@@ -45,7 +54,6 @@ class BaseTokenizer(ABC):
 
 
 class TextTokenizerMixin:
-
     def __init__(self):
         super().__init__()
 
@@ -96,7 +104,7 @@ class IDTokenizer(TextTokenizerMixin, BaseTokenizer):
 
 
 class ParenTokenizer(BaseTokenizer):
-    entry_to_exit_parens = {'(': ')', '[': ']'}
+    entry_to_exit_parens = {'(': ')', '[': ']', '{': '}'}
 
     def __init__(self):
         super().__init__()
@@ -116,14 +124,17 @@ class ParenTokenizer(BaseTokenizer):
         assert char in self.entry_to_exit_parens
         self._entry_paren = char
         self._exit_paren = self.entry_to_exit_parens[char]
+
         self.handle_char = self.handle_char_following_paren
 
     def handle_char_following_paren(self, char):
         try:
             self._token_iterables.append(self._token_generator.handle_char(char))
         except ValueError:
-            assert char == self._exit_paren
-            self.finish()
+            if char == self._exit_paren:
+                self.finish()
+                return
+            raise
 
     def get_tokens(self):
         yield Token(self._entry_paren, self._entry_paren)
@@ -132,8 +143,8 @@ class ParenTokenizer(BaseTokenizer):
         yield Token(self._exit_paren, self._exit_paren)
 
 
-class SymbolTokenizerBase(BaseTokenizer):
-    symbol = None
+class SymbolTokenizer(BaseTokenizer):
+    symbols = frozenset(";,.=|*-+/^&%?:")
 
     def __init__(self):
         super().__init__()
@@ -142,43 +153,31 @@ class SymbolTokenizerBase(BaseTokenizer):
 
     @classmethod
     def should_enter(cls, char):
-        return char == cls.symbol
+        return char in cls.symbols
 
     def handle_char(self, char):
         self._char = char
         self.finish()
 
     def get_tokens(self):
-        yield Token(self.symbol, self.symbol)
+        yield Token(self._char, self._char)
 
 
-class ColonTokenizer(SymbolTokenizerBase):
-    symbol = ':'
+class NewlineConsumerTokenizer(BaseTokenizer):
+    """Consume newlines and don't generate Tokens for them. Only valid inside parentheses"""
+
+    @classmethod
+    def should_enter(cls, char):
+        return char == '\n'
+
+    def handle_char(self, char):
+        self.finish()
 
 
-class AltTokenizer(SymbolTokenizerBase):
-    symbol = '|'
-
-
-class OnePlusTokenizer(SymbolTokenizerBase):
-    symbol = '+'
-
-
-class GreedyTokenizer(SymbolTokenizerBase):
-    symbol = '*'
-
-
-class NewlineTokenizer(SymbolTokenizerBase):
-    symbol = '\n'
+class NewlineTokenizer(NewlineConsumerTokenizer):
 
     def get_tokens(self):
-        yield Token('NEWLINE', '\n')
-
-
-class NewlineConsumerTokenizer(NewlineTokenizer):
-    def get_tokens(self):
-        return
-        yield
+        yield Token('\n', '\n')
 
 
 class FormattingTokenizer(BaseTokenizer):
@@ -191,7 +190,6 @@ class FormattingTokenizer(BaseTokenizer):
 
 
 class CommentTokenizer(BaseTokenizer):
-
     @classmethod
     def should_enter(cls, char):
         return char == '#'
@@ -203,22 +201,26 @@ class CommentTokenizer(BaseTokenizer):
 
 class TokenGenerator:
     """Generates Token instance from a list of valid tokenizers"""
+
     def __init__(self, tokenizers):
         self._tokenizers = tokenizers
-        self._tokenizer = None
+        self._current_tokenizer = None
         self._token_iterables = []
 
+    # TODO rename this and perhaps consider async?
     def handle_char(self, char):
         while True:
-            if self._tokenizer is None:
-                self._tokenizer = select_tokenizer_for(char, self._tokenizers)
+            if self._current_tokenizer is None:
+                self._current_tokenizer = select_tokenizer_for(char, self._tokenizers)
 
+            print("tokenizer for ", char, self._current_tokenizer)
             try:
-                self._tokenizer.handle_char(char)
+                self._current_tokenizer.handle_char(char)
+
             except TokenizerIsClosed:
-                tokens_iterable = self._tokenizer.get_tokens()
+                tokens_iterable = self._current_tokenizer.get_tokens()
                 self._token_iterables.append(tokens_iterable)
-                self._tokenizer = None
+                self._current_tokenizer = None
 
             else:
                 return self.flush_tokens()
