@@ -5,9 +5,17 @@ such cases are implemented with nested tokenizers, and thereafter each tokenizer
 character until one is found
 """
 from abc import ABC, abstractclassmethod, abstractmethod
-from itertools import chain
 from ast import literal_eval
+from enum import Enum
+from itertools import chain
+
 from derp.parsers import Token
+
+
+class TokenizerState(Enum):
+    running = object()
+    handled = object()
+    unhandled = object()
 
 
 def get_root_tokenizers():
@@ -18,42 +26,35 @@ def get_paren_tokenizers():
     return LitTokenizer, IDTokenizer, ParenTokenizer, SymbolTokenizer, NewlineConsumerTokenizer, FormattingTokenizer, CommentTokenizer
 
 
-class TokenizerIsClosed(Exception):
-    """Raising this exception moves the handling of a token to the next tokenizer"""
+class TokenizerClosed(Exception):
     pass
 
 
 class BaseTokenizer(ABC):
-    @abstractclassmethod
-    def should_enter(self, char):
-        pass
-
     @abstractmethod
-    def handle_char(self, char):
+    def feed_character(self, char):
         pass
 
-    def finish(self):
+    def close(self):
         """Finish such that next time tokenizer asked to handle character, it will raise TokenizerIsClosed"""
         self.handle_char = self._raise_closed
         self.should_enter = self._raise_closed
 
-    def abort(self):
-        """Finish such that next time tokenizer asked to handle character, it will raise TokenizerIsClosed.
-        
-        Raises TokenizerIsClosed exception
-        """
-        self.finish()
-        raise TokenizerIsClosed
-
     def _raise_closed(self, token):
-        raise TokenizerIsClosed
+        raise TokenizerClosed
 
     def get_tokens(self):
         return
         yield
 
 
-class TextTokenizerMixin:
+class SelectableTokenizer(BaseTokenizer):
+    @abstractclassmethod
+    def should_enter(self, char):
+        pass
+
+
+class TextTokenizer(SelectableTokenizer):
     def __init__(self):
         super().__init__()
 
@@ -67,43 +68,45 @@ class TextTokenizerMixin:
         self._chars.append(char)
 
 
-class LitTokenizer(TextTokenizerMixin, BaseTokenizer):
+class LitTokenizer(TextTokenizer):
     sentinel_char = "'"
 
     @classmethod
     def should_enter(cls, char):
         return char == cls.sentinel_char
 
-    def handle_char(self, char):
+    def feed_character(self, char):
         self.handle_text_char(char)
 
         # First character is always the one that opens this tokenizer
         if char == self.sentinel_char and len(self._chars) > 1:
-            self.finish()
+            return TokenizerState.handled
+        return TokenizerState.running
 
     def get_tokens(self):
         yield Token('LIT', literal_eval(self.string))
 
 
-class IDTokenizer(TextTokenizerMixin, BaseTokenizer):
+class IDTokenizer(TextTokenizer):
     """Consumes Python identifiers"""
 
     @classmethod
     def should_enter(cls, char):
         return char.isalpha()
 
-    def handle_char(self, char):
+    def feed_character(self, char):
         is_valid = (self.string + char).isidentifier()
         if not is_valid:
-            self.abort()
+            return TokenizerState.unhandled
 
         self.handle_text_char(char)
+        return TokenizerState.running
 
     def get_tokens(self):
         yield Token('ID', self.string)
 
 
-class ParenTokenizer(BaseTokenizer):
+class ParenTokenizer(SelectableTokenizer):
     entry_to_exit_parens = {'(': ')', '[': ']', '{': '}'}
 
     def __init__(self):
@@ -111,7 +114,6 @@ class ParenTokenizer(BaseTokenizer):
 
         self._entry_paren = None
         self._exit_paren = None
-        self._token_iterables = []
 
         tokenizers = get_paren_tokenizers()
         self._token_generator = TokenGenerator(tokenizers)
@@ -120,30 +122,31 @@ class ParenTokenizer(BaseTokenizer):
     def should_enter(cls, char):
         return char in cls.entry_to_exit_parens
 
-    def handle_char(self, char):
+    def feed_character(self, char):
         assert char in self.entry_to_exit_parens
         self._entry_paren = char
         self._exit_paren = self.entry_to_exit_parens[char]
-
-        self.handle_char = self.handle_char_following_paren
+        self.feed_character = self.handle_char_following_paren
+        return TokenizerState.running
 
     def handle_char_following_paren(self, char):
         try:
-            self._token_iterables.append(self._token_generator.handle_char(char))
+            self._token_generator.feed_character(char)
+
         except ValueError:
             if char == self._exit_paren:
-                self.finish()
-                return
+                return TokenizerState.handled
             raise
+
+        return TokenizerState.running
 
     def get_tokens(self):
         yield Token(self._entry_paren, self._entry_paren)
-        yield from chain.from_iterable(self._token_iterables)
-        yield from self._token_generator.flush_tokens()
+        yield from self._token_generator.get_tokens()
         yield Token(self._exit_paren, self._exit_paren)
 
 
-class SymbolTokenizer(BaseTokenizer):
+class SymbolTokenizer(SelectableTokenizer):
     symbols = frozenset(";,.=|*-+/^&%?:")
 
     def __init__(self):
@@ -155,51 +158,51 @@ class SymbolTokenizer(BaseTokenizer):
     def should_enter(cls, char):
         return char in cls.symbols
 
-    def handle_char(self, char):
+    def feed_character(self, char):
         self._char = char
-        self.finish()
+        return TokenizerState.handled
 
     def get_tokens(self):
         yield Token(self._char, self._char)
 
 
-class NewlineConsumerTokenizer(BaseTokenizer):
+class NewlineConsumerTokenizer(SelectableTokenizer):
     """Consume newlines and don't generate Tokens for them. Only valid inside parentheses"""
 
     @classmethod
     def should_enter(cls, char):
         return char == '\n'
 
-    def handle_char(self, char):
-        self.finish()
+    def feed_character(self, char):
+        return TokenizerState.handled
 
 
 class NewlineTokenizer(NewlineConsumerTokenizer):
-
     def get_tokens(self):
         yield Token('\n', '\n')
 
 
-class FormattingTokenizer(BaseTokenizer):
+class FormattingTokenizer(SelectableTokenizer):
     @classmethod
     def should_enter(cls, char):
         return char in {' ', '\t'}
 
-    def handle_char(self, char):
-        self.finish()
+    def feed_character(self, char):
+        return TokenizerState.handled
 
 
-class CommentTokenizer(BaseTokenizer):
+class CommentTokenizer(SelectableTokenizer):
     @classmethod
     def should_enter(cls, char):
         return char == '#'
 
-    def handle_char(self, char):
+    def feed_character(self, char):
         if char == '\n':
-            self.finish()
+            return TokenizerState.handled
+        return TokenizerState.running
 
 
-class TokenGenerator:
+class TokenGenerator(BaseTokenizer):
     """Generates Token instance from a list of valid tokenizers"""
 
     def __init__(self, tokenizers):
@@ -208,27 +211,25 @@ class TokenGenerator:
         self._token_iterables = []
 
     # TODO rename this and perhaps consider async?
-    def handle_char(self, char):
+    def feed_character(self, char):
         while True:
             if self._current_tokenizer is None:
                 self._current_tokenizer = select_tokenizer_for(char, self._tokenizers)
 
-            print("tokenizer for ", char, self._current_tokenizer)
-            try:
-                self._current_tokenizer.handle_char(char)
+            state = self._current_tokenizer.feed_character(char)
 
-            except TokenizerIsClosed:
+            if state != TokenizerState.running:
                 tokens_iterable = self._current_tokenizer.get_tokens()
                 self._token_iterables.append(tokens_iterable)
                 self._current_tokenizer = None
 
-            else:
-                return self.flush_tokens()
+            if state != TokenizerState.unhandled:
+                break
 
-    def flush_tokens(self):
-        iterable = tuple(chain.from_iterable(self._token_iterables.copy()))
+    def get_tokens(self):
+        iterable = chain.from_iterable(self._token_iterables.copy())
         self._token_iterables.clear()
-        return iterable
+        yield from iterable
 
 
 def select_tokenizer_for(char, tokenizers):
@@ -248,8 +249,7 @@ def tokenize_text(source):
     token_generator = TokenGenerator(tokenizers)
 
     for char in (source + '\n'):
-        yield from token_generator.handle_char(char)
-
-    yield from token_generator.flush_tokens()
+        token_generator.feed_character(char)
+        yield from token_generator.get_tokens()
 
     yield Token('ENDMARKER', 'ENDMARKER')
