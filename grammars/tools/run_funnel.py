@@ -1,13 +1,17 @@
 from argparse import ArgumentParser
+from pathlib import Path
 from time import time
 
 from derp.parsers import parse
-from grammars.funnel import f
-from grammars.funnel import tokenize_file
+from grammars.funnel.grammar import f
+from grammars.funnel.tokenizer import tokenize_file
 
-if __name__ == "__main__":
+sample_path = Path(__file__).parent / "sample.funnel"
+
+
+def main():
     parser = ArgumentParser(description='Funnel parser')
-    parser.add_argument('--funnel_path', default="sample.funnel")
+    parser.add_argument('--funnel_path', default=sample_path, type=Path)
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.funnel_path))
@@ -28,3 +32,7 @@ if __name__ == "__main__":
 
         module = result.pop()
         print(module)
+
+
+if __name__ == "__main__":
+    main()

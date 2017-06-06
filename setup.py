@@ -105,6 +105,8 @@ setup(
         'console_scripts': [
             'generate_ebnf=grammars.tools.generate_ebnf:main',
             'generate_funnel=grammars.tools.generate_funnel:main',
+            'parse_funnel=grammars.tools.run_funnel:main',
+            'parse_python=grammars.tools.run_python:main'
         ]
     },
 )

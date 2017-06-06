@@ -1,14 +1,16 @@
 from argparse import ArgumentParser
+from pathlib import Path
 from time import time
 
 from derp.ast import write_ast
 from derp.parsers import parse
-from grammars.python import g
-from grammars.python import tokenize_file
+from grammars.python.grammar import g
+from grammars.python.tokenizer import tokenize_file
 
-if __name__ == "__main__":
+
+def main():
     parser = ArgumentParser(description='Python parser')
-    parser.add_argument('-filepath', default="sample.py")
+    parser.add_argument('filepath', type=Path)
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.filepath))
@@ -32,3 +34,7 @@ if __name__ == "__main__":
 
         with open(output_filename, 'w') as f:
             write_ast(module, f)
+
+
+if __name__ == "__main__":
+    main()
