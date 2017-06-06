@@ -5,19 +5,16 @@ grammar_declaration = """
 from derp.grammar import Grammar
 from derp.parsers import lit, star
 
-{name} = Grammar('test')
+{variable} = Grammar({name!r})
 {rules}
-{name}.ensure_parsers_defined()
+{variable}.ensure_parsers_defined()
 """
 
 
 class ParserGenerator(NodeVisitor):
-    def __init__(self, grammar_name):
-        self.grammar = Grammar(grammar_name)
-        self.grammar_name = "g"
-
-    def emit_default(self, args):
-        return args
+    def __init__(self, grammar_name, grammar_variable='g'):
+        self.grammar_name = grammar_name
+        self.grammar_variable = grammar_variable
 
     def visit_Grammar(self, node):
         statements = []
@@ -27,7 +24,7 @@ class ParserGenerator(NodeVisitor):
             statements.append(stmt)
 
         rules = '\n'.join(statements)
-        return grammar_declaration.format(name=self.grammar_name, rules=rules)
+        return grammar_declaration.format(name=self.grammar_name, variable=self.grammar_variable, rules=rules)
 
     def visit_ID(self, node):
         if node.name == "STRING":
@@ -37,7 +34,7 @@ class ParserGenerator(NodeVisitor):
         elif node.name in {"NEWLINE", "ENDMARKER", "INDENT", "DEDENT", "NUMBER"}:
             return "lit({!r})".format(node.name)
         else:
-            return "{}.{}".format(self.grammar_name, node.name)
+            return "{}.{}".format(self.grammar_variable, node.name)
 
     def visit_OptParser(self, node):
         child_text = self.visit(node.child)
@@ -52,7 +49,7 @@ class ParserGenerator(NodeVisitor):
         return "g.{} = {}".format(node.name, parser)
 
     def visit_RuleReference(self, node):
-        return getattr(self.grammar, node.name)
+        return getattr(self.grammar_name, node.name)
 
     def visit_AltParser(self, node):
         left = self.visit(node.left)

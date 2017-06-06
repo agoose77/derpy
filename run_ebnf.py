@@ -33,7 +33,7 @@ if __name__ == "__main__":
         print(to_string(root))
         #
         # Generate parsers from AST
-        generator = ParserGenerator('Demo BNF')
+        generator = ParserGenerator(grammar_name='Demo BNF')
         grammar = generator.visit(root)
 
         print("==========Built Grammar============")
