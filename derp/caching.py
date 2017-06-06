@@ -23,12 +23,12 @@ def memoized_n(func):
     memo = cache_dict_type()
 
     @wraps(func)
-    def wrapper(self, *args, memo=memo):
+    def wrapper(self, *args, memo=memo, func=func):
         try:
-            result = memo[self, args]
+            return memo[self, args]
         except KeyError:
             result = memo[self, args] = func.__get__(self)(*args)
-        return result
+            return result
 
     return wrapper
 
