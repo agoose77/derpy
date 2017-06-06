@@ -8,6 +8,7 @@ See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.ht
 
 This parser would be represented as 
 ```python
+from derp.parsers import Recurrence, lit, empty_string
 s = Recurrence()
 s.parser = empty_string | (lit('1') & s)
 ```
