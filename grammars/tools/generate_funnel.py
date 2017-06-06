@@ -39,7 +39,7 @@ def main():
         print(to_string(root))
         #
         # Generate parsers from AST
-        generator = ParserGenerator(name='Demo BNF')
+        generator = ParserGenerator(name='Demo BNF', variable='f')
         grammar = generator.visit(root)
 
         print("==========Built Grammar============")

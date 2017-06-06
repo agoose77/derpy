@@ -5,7 +5,7 @@ class ParserGenerator(_ParserGenerator):
     grammar_declaration = """
 from derp.grammar import Grammar
 from derp.parsers import lit, star
-from python.grammar import g
+from grammars.python.grammar import g
 
 {variable} = Grammar({name!r})
 {rules}
