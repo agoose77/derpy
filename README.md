@@ -52,4 +52,5 @@ Most of the lines of code are devoted to outputting a useful AST (but for around
 A Funnel parser example can be found in the funnel module. Funnel is a custom lightweight language that allows embedded Python inside data model definitions
 
 ## PyBNF Grammar Meta Parsing
-An example of parsing a Python BNF-like grammar, to output a parser is given. Note, this is quite slow at parsing a full grammar, so it's more of a POC at this point.
+An example of parsing the Python BNF grammar, to produce the source for a Python parser is given. 
+To make this usable as an AST generator requires some formatting of each rule (using a reduction), which can be done by using custom reduction rules on the output of the generator. The produced Python grammar can be compared against the hand-rolled one in `python`
