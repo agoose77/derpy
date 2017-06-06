@@ -31,7 +31,7 @@ inline_stmt: '##' (form_inline | validate_inline)
 form_inline: 'form' inline_python_stmt
 validate_inline: 'validate' inline_python_stmt
 inline_python_stmt: py_simple_stmt | if_stmt_inline
-if_stmt_inline: 'if' py_test ':' py_simple_stmt ('elif' py_test ':' py_simple_stmt)* ['else' ':' py_simple_stmt]
+if_stmt_inline: 'if' py_test ':' py_simple_stmt
 
 # block stmts
 block: form_block | validate_block
