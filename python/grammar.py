@@ -918,7 +918,7 @@ def emit_simple_stmt_suite(stmt_or_stmts):
 g = Grammar('Python')
 
 g.single_input = lit('NEWLINE') | g.simple_stmt | g.compound_stmt & lit('NEWLINE')
-# g.eval_input = g.test_list & +ter('NEWLINE') & ter('ENDMARKER')
+g.eval_input = g.test_list & +lit('NEWLINE') & lit('ENDMARKER')
 g.file_input = (+(lit('NEWLINE') | g.stmt) & lit('ENDMARKER')) >> emit_file_input
 
 g.decorator = (lit('@') & g.dotted_name & ~(lit('(') & ~g.arg_list & lit(')')) & lit('NEWLINE')) >> emit_decorator

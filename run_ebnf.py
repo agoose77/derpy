@@ -1,62 +1,50 @@
+import time
 from argparse import ArgumentParser
+from pathlib import Path
 
+from derp.ast import to_string
+from derp.parsers import parse
 from ebnf.generate import ParserGenerator
 from ebnf.meta_grammar import b
 from ebnf.tokenizer import tokenize_file
-from derp.ast import to_string
-from derp.parsers import parse
-
-sample = """for"""
-
-
-class CustomParserGenerator(ParserGenerator):
-    def emit_my_rule(self, args):
-        print("Emit My Rule!", args)
-        return args
-
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='BNF parser generator')
-    parser.add_argument('-filepath', default="sample.ebnf")
-    parser.add_argument('-sample', default="sample.txt")
+    parser.add_argument('--filepath', default="sample.ebnf")
+    parser.add_argument('--sample', default="sample.txt", type=Path)
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.filepath))
     print("Parsing BNF grammar: {} with {} tokens".format(args.filepath, len(tokens)))
-    tokens = list(tokens);print(tokens)
-    # Print parse of BNF
-    import time
-    start = time.monotonic()
 
+    start_time = time.monotonic()
     result = parse(b.grammar, tokens)
-    stop = time.monotonic()
-    print(f"{stop-start}")
-    from pprint import pprint
-    pprint(result)
+    finish_time = time.monotonic()
 
-    print(f"{len(result)} results")
+    if not result:
+        print("Failed to parse BNF")
 
-    root = result.pop()
-    print(to_string(root))
-    print("Built AST")
-    #
-    # Generate parsers from AST
-    generator = CustomParserGenerator('Demo BNF')
-    grammar = next(generator.visit(root))
-    # grammar.ensure_parsers_defined()
-    print(grammar)
-    exec(grammar)
+    elif len(result) > 1:
+        print("Ambiguous parse of BNF, mutliple parse trees")
 
-    # print("Built Grammar")
-    # for name in dir(grammar):
-    #     print(name, getattr(grammar, name))
+    else:
+        root = result.pop()
+        print("==========Built AST============")
+        print(to_string(root))
+        #
+        # Generate parsers from AST
+        generator = ParserGenerator('Demo BNF')
+        grammar = generator.visit(root)
 
-    from python.tokenizer import tokenize_text
-    from derp.parsers import lit
-    # from python.grammar import g
+        print("==========Built Grammar============")
+        print(grammar)
+        exec(grammar)
 
-    # Tokenize expression
-    sample_tokens = tokenize_text("x = y")
-    sample_tokens = list(sample_tokens)
-    result = parse(g.file_input, sample_tokens)
-    print(result)
+        print()
+        from python.tokenizer import tokenize_file as pytokenize_file
+
+        # Tokenize expression
+        print("==========Test Grammar============")
+        sample_tokens = pytokenize_file(args.sample)
+        result = parse(g.file_input, sample_tokens)
+        print(result)

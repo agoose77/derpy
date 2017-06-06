@@ -1,13 +1,11 @@
 from argparse import ArgumentParser
-
-from python.tokenizer import tokenize_file
-from python.grammar import g
-from python.codegen import to_source
-
-from derp.parsers import parse
-from derp.ast import write_ast
-
 from time import time
+
+from derp.ast import write_ast
+from derp.parsers import parse
+from python.grammar import g
+from python.tokenizer import tokenize_file
+
 if __name__ == "__main__":
     parser = ArgumentParser(description='Python parser')
     parser.add_argument('-filepath', default="sample.py")
@@ -15,15 +13,19 @@ if __name__ == "__main__":
 
     tokens = list(tokenize_file(args.filepath))
     print("Parsing: {} with {} tokens".format(args.filepath, len(tokens)))
-    s=time()
+
+    start_time = time()
     result = parse(g.file_input, tokens)
+    finish_time = time()
 
     if not result:
         print("Failed to parse!")
 
     else:
+        print("Parsed in {:.3f}s".format(finish_time - start_time))
+
         module = result.pop()
-        print(time()-s)
         output_filename = "{}.ast".format(args.filepath)
+
         with open(output_filename, 'w') as f:
-            write_ast(module,f)
+            write_ast(module, f)
