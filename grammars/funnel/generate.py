@@ -1,4 +1,4 @@
-from ebnf.generate import ParserGenerator as _ParserGenerator
+from grammars.ebnf.generate import ParserGenerator as _ParserGenerator
 
 
 class ParserGenerator(_ParserGenerator):

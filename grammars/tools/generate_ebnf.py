@@ -5,13 +5,16 @@ from pathlib import Path
 
 from derp.ast import to_string
 from derp.parsers import parse
-from ebnf.generate import ParserGenerator
-from ebnf.meta_grammar import b
-from ebnf.tokenizer import tokenize_file
+from grammars.ebnf.generate import ParserGenerator
+from grammars.ebnf.meta_grammar import b
+from grammars.ebnf.tokenizer import tokenize_file
 
-if __name__ == "__main__":
+default_path = Path(__file__).parent / "sample.ebnf"
+
+
+def main():
     parser = ArgumentParser(description='BNF parser generator')
-    parser.add_argument('--grammar_filepath', default="sample.ebnf", type=Path)
+    parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.grammar_filepath))
@@ -38,3 +41,7 @@ if __name__ == "__main__":
 
         print("==========Built Grammar============")
         print(grammar)
+
+
+if __name__ == "__main__":
+    main()

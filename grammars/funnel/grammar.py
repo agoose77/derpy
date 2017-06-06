@@ -2,7 +2,7 @@
 from derp.grammar import Grammar
 from derp.parsers import lit, star
 
-from python.grammar import g
+from grammars.python import g
 
 f = Grammar('Funnel')
 f.file_input = +(f.type | lit('NEWLINE')) & lit('ENDMARKER')

@@ -1,7 +1,7 @@
 from derp.grammar import Grammar
 from derp.parsers import lit
 from derp.utilities import unpack_n
-from . import ast
+from grammars.ebnf import ast
 
 
 def emit_grammar_parser(args):

@@ -1,5 +1,0 @@
-class X:
-    x = 1
-
-    def func(self, x:int):
-        print("HOOO")

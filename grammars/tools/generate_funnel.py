@@ -4,13 +4,18 @@ from pathlib import Path
 
 from derp.ast import to_string
 from derp.parsers import parse
-from funnel.generate import ParserGenerator
-from ebnf.meta_grammar import b
-from ebnf.tokenizer import tokenize_file
+from grammars.ebnf.meta_grammar import b
+from grammars.ebnf.tokenizer import tokenize_file
+from grammars.funnel.generate import ParserGenerator
 
-if __name__ == "__main__":
+from grammars import funnel
+
+default_path = Path(funnel.__path__[0]) / "funnel.ebnf"
+
+
+def main():
     parser = ArgumentParser(description='Funnel parser')
-    parser.add_argument('--grammar_filepath', default="../funnel/funnel.ebnf", type=Path)
+    parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.grammar_filepath))
@@ -38,3 +43,7 @@ if __name__ == "__main__":
 
         print("==========Built Grammar============")
         print(grammar)
+
+
+if __name__ == "__main__":
+    main()

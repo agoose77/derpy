@@ -3,8 +3,8 @@ from time import time
 
 from derp.ast import write_ast
 from derp.parsers import parse
-from python.grammar import g
-from python.tokenizer import tokenize_file
+from grammars.python import g
+from grammars.python import tokenize_file
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Python parser')

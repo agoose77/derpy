@@ -1,10 +1,9 @@
 from argparse import ArgumentParser
 from time import time
 
-from derp.ast import write_ast
 from derp.parsers import parse
-from funnel.grammar import f
-from funnel.tokenizer import tokenize_file
+from grammars.funnel import f
+from grammars.funnel import tokenize_file
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Funnel parser')

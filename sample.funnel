@@ -7,13 +7,15 @@ Type AttractEasyPartnerInterface:
 
     *HaddockRestraintsInterface haddock_restraints
     ## form haddock_restraints.name = "Definition of residues for HADDOCK-type distance restraints (optional)"
-    ## form haddock_restraints.auto_passive.type = None #TODO: disabled for now
+    ## form haddock_restraints.auto_passive.type = None
 
     Integer ensemble_size = 0
     ## form ensemble_size.name = "If the PDB is a multi-model ensemble, specify the number of conformers"
     ## validate if ensemble_size != 0: assert ensemble_size >= 1
 
     Bool generate_modes = False
+    ## validate if generate_modes: assert nr_modes >= 1 and nr_modes <= 10
+
     Integer nr_modes = 5
     form:
         use_rmsd.name = "Perform RMSD analysis"
@@ -23,7 +25,6 @@ Type AttractEasyPartnerInterface:
         nr_modes.options = list(range(0,10+1))
         nr_modes.optiontitles = ["No modes"] + [str(v) for v in nr_modes.options[1:]]
 
-    ## validate if generate_modes: assert nr_modes >= 1 and nr_modes <= 10
 
     Bool use_rmsd = False
     *ResourceData_PDB rmsd_pdb

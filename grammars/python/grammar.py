@@ -4,7 +4,7 @@ from derp.ast import iter_fields
 from derp.grammar import Grammar
 from derp.parsers import lit, star
 from derp.utilities import unpack_n
-from . import ast
+from grammars.python import ast
 
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
