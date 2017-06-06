@@ -29,7 +29,7 @@ parse(s, [Token('1', 1) for i in range(5)])
 ## Operator notation
 Operator overloading (+, >>, ~, &, |) makes the process of writing a grammar less verbose and simpler to read.
 
-`P` represents a parser (e.g `S` in the above example)
+`P` represents a parser (e.g `s` in the above example)
 * `+P` Regex *, 0 or more
 * `~P` Optional
 * `P >> f` Reduction (call f with result of parser)
