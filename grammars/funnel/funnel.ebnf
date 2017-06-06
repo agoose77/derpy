@@ -36,6 +36,6 @@ if_stmt_inline: 'if' py_test ':' py_simple_stmt
 # block stmts
 block: form_block | validate_block
 
-form_block: 'form' ':' (py_suite | inline_python_stmt)
-validate_block: 'validate' ':' (py_suite | inline_python_stmt)
+form_block: 'form' ':' py_suite
+validate_block: 'validate' ':' py_suite
 
