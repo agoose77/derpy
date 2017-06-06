@@ -30,7 +30,7 @@ class Grammar:
 
     def __setattr__(self, name, value):
         if self._frozen:
-            raise AttributeError("Frozen grammar cannot be assigned to")
+            raise AttributeError("Frozen grammar {} cannot be assigned to".format(self._name))
 
         if not isinstance(value, BaseParser):
             raise ValueError("Grammar rule must be assigned to an instance of BaseParser")

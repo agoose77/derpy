@@ -1,0 +1,41 @@
+file_input: (type | NEWLINE)* ENDMARKER
+type: 'Type' NAME ':' suite
+
+suite: NEWLINE INDENT (body_stmt|NEWLINE)+ DEDENT
+
+body_stmt: stmt | block
+
+stmt: inline_stmt | declaration_stmt
+
+# declaration stmts
+declaration_stmt: default_decl_stmt | required_decl_stmt
+
+default_decl_stmt: (enum ['=' STRING+] |
+              integer ['=' NUMBER] |
+              string ['=' STRING+] |
+              bool ['=' ('True' | 'False')] |
+              other ['=' py_expr_stmt]) NEWLINE
+required_decl_stmt: '*' (string | enum | integer | bool | other) NEWLINE
+
+# type declarations
+enum: 'Enum' NAME '(' STRING (',' STRING)+ ')'
+integer: 'Integer' NAME
+string: 'String' NAME
+bool: 'Bool' NAME
+other: NAME NAME
+
+
+# inline stmts
+inline_stmt: '##' (form_inline | validate_inline)
+
+form_inline: 'form' inline_python_stmt
+validate_inline: 'validate' inline_python_stmt
+inline_python_stmt: py_simple_stmt | if_stmt_inline
+if_stmt_inline: 'if' py_test ':' py_simple_stmt ('elif' py_test ':' py_simple_stmt)* ['else' ':' py_simple_stmt]
+
+# block stmts
+block: form_block | validate_block
+
+form_block: 'form' ':' py_suite
+validate_block: 'validate' ':' py_suite
+

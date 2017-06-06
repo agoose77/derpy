@@ -19,7 +19,10 @@ if __name__ == "__main__":
     finish_time = time()
 
     if not result:
-        print("Failed to parse!")
+        print("Failed to parse Python source")
+
+    elif len(result) > 1:
+        print("Ambiguous parse of Python source, mutliple parse trees")
 
     else:
         print("Parsed in {:.3f}s".format(finish_time - start_time))

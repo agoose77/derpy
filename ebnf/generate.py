@@ -1,7 +1,10 @@
-from derp.ast import NodeVisitor
-from derp.grammar import Grammar
+__all__ = "ParserGenerator",
 
-grammar_declaration = """
+from derp.ast import NodeVisitor
+
+
+class ParserGenerator(NodeVisitor):
+    grammar_declaration = """
 from derp.grammar import Grammar
 from derp.parsers import lit, star
 
@@ -10,11 +13,9 @@ from derp.parsers import lit, star
 {variable}.ensure_parsers_defined()
 """
 
-
-class ParserGenerator(NodeVisitor):
-    def __init__(self, grammar_name, grammar_variable='g'):
-        self.grammar_name = grammar_name
-        self.grammar_variable = grammar_variable
+    def __init__(self, name, variable='g'):
+        self.name = name
+        self.variable = variable
 
     def visit_Grammar(self, node):
         statements = []
@@ -24,7 +25,7 @@ class ParserGenerator(NodeVisitor):
             statements.append(stmt)
 
         rules = '\n'.join(statements)
-        return grammar_declaration.format(name=self.grammar_name, variable=self.grammar_variable, rules=rules)
+        return self.grammar_declaration.format(name=self.name, variable=self.variable, rules=rules, self=self)
 
     def visit_ID(self, node):
         if node.name == "STRING":
@@ -34,7 +35,7 @@ class ParserGenerator(NodeVisitor):
         elif node.name in {"NEWLINE", "ENDMARKER", "INDENT", "DEDENT", "NUMBER"}:
             return "lit({!r})".format(node.name)
         else:
-            return "{}.{}".format(self.grammar_variable, node.name)
+            return "{}.{}".format(self.variable, node.name)
 
     def visit_OptParser(self, node):
         child_text = self.visit(node.child)
@@ -46,10 +47,10 @@ class ParserGenerator(NodeVisitor):
 
     def visit_RuleDefinition(self, node):
         parser = self.visit(node.parser)
-        return "g.{} = {}".format(node.name, parser)
+        return "{}.{} = {}".format(self.variable, node.name, parser)
 
     def visit_RuleReference(self, node):
-        return getattr(self.grammar_name, node.name)
+        return getattr(self.name, node.name)
 
     def visit_AltParser(self, node):
         left = self.visit(node.left)
