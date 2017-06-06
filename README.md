@@ -4,7 +4,7 @@ A Python implementation of parsing with derivatives. Provides a concise infix no
 See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.html for a Java implementation, or http://matt.might.net/articles/parsing-with-derivatives/ for the original author's publication.
 
 ## Example parser
-![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;S&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;S)
+![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;s&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;s)
 
 This parser would be represented as 
 ```python
