@@ -46,7 +46,7 @@ class Grammar:
 
             else:
                 if recurrence.parser is not None:
-                    raise ValueError('Recurrent parser already defined')
+                    raise ValueError('Recurrent parser {!r} already defined'.format(name))
 
                 recurrence.parser = value
 

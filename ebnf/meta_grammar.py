@@ -1,12 +1,13 @@
-from derp.parsers import lit, star
 from derp.grammar import Grammar
+from derp.parsers import lit
 from derp.utilities import unpack_n
-
 from . import ast
 
 
-def emit_grammar_parser(text):
-    return ast.RuleReference(text)
+def emit_grammar_parser(args):
+    any_rules_or_nl, end_marker = args
+    rules = tuple([r for r in any_rules_or_nl if r != '\n'])
+    return ast.Grammar(rules)
 
 
 def emit_lit_parser(text):
@@ -18,14 +19,18 @@ def emit_opt_parser(args):
     return ast.OptParser(child)
 
 
-def emit_one_plus_parser(args):
-    elem, _ = args
-    return ast.OnePlusParser(elem)
+def emit_star(args):
+    elem, plus = args
+    if plus:
+        return ast.ManyParser(elem)
+    return elem
 
 
-def emit_many_parser(args):
-    elem, _ = args
-    return ast.ManyParser(elem)
+def emit_plus(args):
+    elem, plus = args
+    if plus:
+        return ast.OnePlusParser(elem)
+    return elem
 
 
 def emit_group_parser(args):
@@ -34,22 +39,8 @@ def emit_group_parser(args):
 
 
 def emit_definition(args):
-    name, _, child = unpack_n(args, 3)
+    name, _, child, _ = unpack_n(args, 4)
     return ast.RuleDefinition(name, child)
-
-
-def emit_multiline(args):
-    parser, _ = args
-    return parser,
-
-
-def emit_root(args):
-    elem, root = args
-    if root == '':
-        return elem
-    if elem == '\n':
-        return root
-    return ast.ConcatParser(elem, root)
 
 
 def emit_file(args):
@@ -58,40 +49,43 @@ def emit_file(args):
 
 
 def emit_alt_parser(args):
-    left, _, right = unpack_n(args, 3)
-    return ast.AltParser(left, right)
+    node, expr_tuple = unpack_n(args, 2)
+    if expr_tuple:
+        _, exprs = zip(*expr_tuple)
+        for expr in exprs:
+            node = ast.AltParser(node, expr)
+    return node
+
+
+def emit_concat_parser(args):
+    node, exprs = args
+    if exprs:
+        for expr in exprs:
+            node = ast.ConcatParser(node, expr)
+    return node
+
+
+def emit_id(id_):
+    return ast.ID(id_)
+
+
+def emit_lit(lit):
+    return ast.LitParser(lit)
 
 
 b = Grammar('EBNF')
-# b.suite = (b.group_elem & ~b.suite) >> emit_root
-#
-# b.parse_definition = (lit('ID') & lit(':') & b.suite) >> emit_definition
-# b.element = lit('LIT') >> emit_lit_parser | lit('ID') >> emit_grammar_parser
-#
-# #b.multiline_suite = ((b.all_elements | lit('NEWLINE')) & ~b.multiline_suite) >> emit_root
-#
-# b.group_elem = (lit('(') & b.opt_elem & lit(')')) | b.opt_elem
-# b.opt_elem = (lit('[') & b.or_expr & lit(']')) | b.or_expr
-# b.or_expr = b.and_expr & +(lit('|') & b.and_expr)
-# b.and_expr = b.one_plus & +b.one_plus
-# b.one_plus = (b.any_n & lit('+'))# >> emit_one_plus_parser
-# b.any_n  = (b.element & lit('*'))
-#
-#
-# b.file_input = (+(lit('NEWLINE') | b.parse_definition) & lit('ENDMARKER')) >> emit_file
 
-b.identifier = lit('ID')
-b.lhs = b.identifier
-b.rhs = b.identifier | lit('LIT') | b.optional | b.repeated | b.repeated | b.alternate
-b.non_concatenating = star(b.rhs)
-b.non_alternating = b.identifier | lit('LIT') | b.optional | b.repeated | b.repeated
+b.alt = (b.cat & +(lit('|') & b.cat)) >> emit_alt_parser
+b.cat = (b.star & +b.star) >> emit_concat_parser
+b.star = (b.plus & ~lit('*')) >> emit_star
+b.plus = (b.element & ~lit('+')) >> emit_plus
 
-b.optional = lit('[') & b.non_concatenating & lit(']')
-b.repeated = lit('{') & b.non_concatenating & lit('}')
-b.grouped = lit('(') & b.non_concatenating & lit(')')
-b.alternate = b.non_alternating & star(lit('|') & b.non_alternating)
+b.optional = (lit('[') & b.alt & lit(']')) >> emit_opt_parser
+b.grouped = (lit('(') & b.alt & lit(')')) >> emit_group_parser
 
-b.rule = b.lhs & lit(':') & b.non_concatenating & lit('\n')
-b.grammar = +(b.rule | lit('\n')) & lit('ENDMARKER')
+b.element = lit('ID') >> emit_id | b.grouped | b.optional | lit('LIT') >> emit_lit
+
+b.rule = (lit('ID') & lit(':') & b.alt & lit('\n')) >> emit_definition
+b.grammar = (+(b.rule | lit('\n')) & lit('ENDMARKER')) >> emit_grammar_parser
 
 b.ensure_parsers_defined()

@@ -12,3 +12,5 @@ OptParser = ChildParser.subclass("OptParser")
 ManyParser = ChildParser.subclass("ManyParser")
 OnePlusParser = ChildParser.subclass("OnePlusParser")
 GroupParser = ChildParser.subclass("GroupParser")
+
+ID = AST.subclass("ID", "name")

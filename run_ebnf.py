@@ -27,26 +27,36 @@ if __name__ == "__main__":
     # Print parse of BNF
     import time
     start = time.monotonic()
+
     result = parse(b.grammar, tokens)
     stop = time.monotonic()
     print(f"{stop-start}")
-    print(f"{len(result)} results")
     from pprint import pprint
     pprint(result)
 
-    # root = result.pop()
-    # print(to_string(root))
-    # print("Built AST")
+    print(f"{len(result)} results")
+
+    root = result.pop()
+    print(to_string(root))
+    print("Built AST")
     #
-    # # Generate parsers from AST
-    # generator = CustomParserGenerator('Demo BNF')
-    # grammar = next(generator.visit(root))
+    # Generate parsers from AST
+    generator = CustomParserGenerator('Demo BNF')
+    grammar = next(generator.visit(root))
     # grammar.ensure_parsers_defined()
-    #
+    print(grammar)
+    exec(grammar)
+
     # print("Built Grammar")
-    #
-    # # Tokenize expression
-    # print("Parsing grammar sample: {} with {} tokens".format(args.filepath, len(tokens)))
-    # sample_tokens = py_tokenize_file(args.sample)
-    # result = parse(grammar.main & ter('NEWLINE') & ter('ENDMARKER'), sample_tokens)
-    # print(result)
+    # for name in dir(grammar):
+    #     print(name, getattr(grammar, name))
+
+    from python.tokenizer import tokenize_text
+    from derp.parsers import lit
+    # from python.grammar import g
+
+    # Tokenize expression
+    sample_tokens = tokenize_text("x = y")
+    sample_tokens = list(sample_tokens)
+    result = parse(g.file_input, sample_tokens)
+    print(result)

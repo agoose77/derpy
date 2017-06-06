@@ -198,7 +198,7 @@ class CommentTokenizer(SelectableTokenizer):
 
     def feed_character(self, char):
         if char == '\n':
-            return TokenizerState.handled
+            return TokenizerState.unhandled
         return TokenizerState.running
 
 
@@ -210,7 +210,6 @@ class TokenGenerator(BaseTokenizer):
         self._current_tokenizer = None
         self._token_iterables = []
 
-    # TODO rename this and perhaps consider async?
     def feed_character(self, char):
         while True:
             if self._current_tokenizer is None:
@@ -233,6 +232,7 @@ class TokenGenerator(BaseTokenizer):
 
 
 def select_tokenizer_for(char, tokenizers):
+    """Return instance of first parser that can handle given character"""
     try:
         return next(p for p in tokenizers if p.should_enter(char))()
     except StopIteration:
