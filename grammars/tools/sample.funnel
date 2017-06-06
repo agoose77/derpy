@@ -1,20 +1,21 @@
 Type AttractEasyPartnerInterface:
     ResourceData_PDB pdbfile
     Enum moleculetype("Protein", "Peptide","DNA", "RNA") = "Protein"
-    ## form moleculetype.name = "What kind of molecule are you docking?"
+    form: moleculetype.name = "What kind of molecule are you docking?"
+
     Bool has_hydrogens = False
-    ## form has_hydrogens.name = "The PDB file contains all necessary atoms, including polar hydrogens"
+    form: has_hydrogens.name = "The PDB file contains all necessary atoms, including polar hydrogens"
 
     *HaddockRestraintsInterface haddock_restraints
-    ## form haddock_restraints.name = "Definition of residues for HADDOCK-type distance restraints (optional)"
-    ## form haddock_restraints.auto_passive.type = None
+    form: haddock_restraints.name = "Definition of residues for HADDOCK-type distance restraints (optional)"
+    form: haddock_restraints.auto_passive.type = None
 
     Integer ensemble_size = 0
-    ## form ensemble_size.name = "If the PDB is a multi-model ensemble, specify the number of conformers"
-    ## validate if ensemble_size != 0: assert ensemble_size >= 1
+    form: ensemble_size.name = "If the PDB is a multi-model ensemble, specify the number of conformers"
+    validate: if ensemble_size != 0: assert ensemble_size >= 1
 
     Bool generate_modes = False
-    ## validate if generate_modes: assert nr_modes >= 1 and nr_modes <= 10
+    validate: if generate_modes: assert nr_modes >= 1 and nr_modes <= 10
 
     Integer nr_modes = 5
     form:

@@ -5,7 +5,7 @@ suite: NEWLINE INDENT (body_stmt|NEWLINE)+ DEDENT
 
 body_stmt: stmt | block
 
-stmt: inline_stmt | declaration_stmt
+stmt: declaration_stmt
 
 # declaration stmts
 declaration_stmt: default_decl_stmt | required_decl_stmt
@@ -24,18 +24,11 @@ string: 'String' NAME
 bool: 'Bool' NAME
 other: NAME NAME
 
-
-# inline stmts
-inline_stmt: '##' (form_inline | validate_inline)
-
-form_inline: 'form' inline_python_stmt
-validate_inline: 'validate' inline_python_stmt
-inline_python_stmt: py_simple_stmt | if_stmt_inline
-if_stmt_inline: 'if' py_test ':' py_simple_stmt
-
 # block stmts
 block: form_block | validate_block
 
-form_block: 'form' ':' py_suite
-validate_block: 'validate' ':' py_suite
+form_block: 'form' ':' block_suite
+validate_block: 'validate' ':' block_suite
 
+block_suite: py_suite | if_stmt_inline
+if_stmt_inline: 'if' py_test ':' py_simple_stmt
