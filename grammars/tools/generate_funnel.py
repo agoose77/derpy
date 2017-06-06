@@ -33,6 +33,7 @@ def main():
         print("Ambiguous parse of BNF, mutliple parse trees")
 
     else:
+        print("Successfully parsed Funnel in {:.3f}s".format(finish_time - start_time))
         root = result.pop()
         print("==========Built AST============")
         print(to_string(root))

@@ -13,24 +13,25 @@ default_path = Path(__file__).parent / "sample.ebnf"
 
 
 def main():
-    parser = ArgumentParser(description='BNF parser generator')
+    parser = ArgumentParser(description='EBNF parser generator')
     parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
     tokens = list(tokenize_file(args.grammar_filepath))
-    print("Parsing BNF grammar: {} with {} tokens".format(args.grammar_filepath, len(tokens)))
+    print("Parsing EBNF grammar: {} with {} tokens".format(args.grammar_filepath, len(tokens)))
 
     start_time = time.monotonic()
     result = parse(b.grammar, tokens)
     finish_time = time.monotonic()
 
     if not result:
-        print("Failed to parse BNF")
+        print("Failed to parse EBNF")
 
     elif len(result) > 1:
-        print("Ambiguous parse of BNF, mutliple parse trees")
+        print("Ambiguous parse of EBNF, mutliple parse trees")
 
     else:
+        print("Successfully parsed EBNF in {:.3f}s".format(finish_time-start_time))
         root = result.pop()
         print("==========Built AST============")
         print(to_string(root))
