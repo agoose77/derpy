@@ -3,6 +3,7 @@ from pathlib import Path
 from time import time
 
 from derp.parsers import parse
+from derp.ast import to_string
 from grammars.funnel.grammar import f
 from grammars.funnel.tokenizer import tokenize_file
 
@@ -31,7 +32,7 @@ def main():
         print("Parsed in {:.3f}s".format(finish_time - start_time))
 
         module = result.pop()
-        print(module)
+        print(to_string(module))
 
 
 if __name__ == "__main__":

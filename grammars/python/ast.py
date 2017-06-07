@@ -1,5 +1,4 @@
 from enum import Enum
-
 from derp.ast import AST
 
 # Modules ##################################################
@@ -47,10 +46,10 @@ LambdaDef = expr.subclass('LambdaDef', 'args body')
 IfExp = expr.subclass('IfExp', 'test body or_else')
 Dict = expr.subclass('Dict', 'keys values')
 Set = expr.subclass('Set', 'elts')
-ListComp = expr.subclass('ListComp', 'elt tools')
-SetComp = expr.subclass('SetComp', 'elt tools')
-DictComp = expr.subclass('DictComp', 'key value tools')
-GeneratorExp = expr.subclass('GeneratorExp', 'elt tools')
+ListComp = expr.subclass('ListComp', 'elt generators')
+SetComp = expr.subclass('SetComp', 'elt generators')
+DictComp = expr.subclass('DictComp', 'key value generators')
+GeneratorExp = expr.subclass('GeneratorExp', 'elt generators')
 # the grammar constrains where yield expressions can occur
 Yield = expr.subclass('Yield', 'value')
 YieldFrom = expr.subclass('YieldFrom', 'value')
@@ -125,7 +124,7 @@ arg = AST.subclass('arg', 'arg annotation')
 
 ArgUnpackTypes = Enum('ArgUnpackTypes', 'args kwargs none')
 
-keyword = AST.subclass('keyword', 'arg value')  # arg=None for **kwargs
+keyword = AST.subclass('keyword', 'arg value')# arg=None for **kwargs
 alias = AST.subclass('alias', 'name asname')
 withitem = AST.subclass('withitem', 'context_expr optional_vars')
 

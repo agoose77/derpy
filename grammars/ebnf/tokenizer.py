@@ -220,6 +220,7 @@ class TokenGenerator(BaseTokenizer):
             if state != TokenizerState.running:
                 tokens_iterable = self._current_tokenizer.get_tokens()
                 self._token_iterables.append(tokens_iterable)
+                self._current_tokenizer.close()
                 self._current_tokenizer = None
 
             if state != TokenizerState.unhandled:
