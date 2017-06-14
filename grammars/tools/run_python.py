@@ -30,7 +30,7 @@ def main():
         print("Parsed in {:.3f}s".format(finish_time - start_time))
 
         module = result.pop()
-        output_filename = "{}.ast".format(args.filepath)
+        output_filename = args.filepath.parent / "{}.ast".format(args.filepath.name)
 
         with open(output_filename, 'w') as f:
             write_ast(module, f)

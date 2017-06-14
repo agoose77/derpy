@@ -64,12 +64,13 @@ NameConstant = expr.subclass('NameConstant', 'value')
 Ellipsis_ = expr.subclass('Ellipsis_', '')
 
 # the following expression can appear in assignment context
-Attribute = expr.subclass('Attribute', 'value attr')
-Subscript = expr.subclass('Subscript', 'value slice')
-Starred = expr.subclass('Starred', 'value')
-Name = expr.subclass('Name', 'id')
-List = expr.subclass('List', 'elts')
-Tuple = expr.subclass('Tuple', 'elts')
+assignment_expr = expr.subclass('assignment_expr')
+Attribute = assignment_expr.subclass('Attribute', 'value attr')
+Subscript = assignment_expr.subclass('Subscript', 'value slice')
+Starred = assignment_expr.subclass('Starred', 'value')
+Name = assignment_expr.subclass('Name', 'id')
+List = assignment_expr.subclass('List', 'elts')
+Tuple = assignment_expr.subclass('Tuple', 'elts')
 #############################################################
 
 ### Slices ##################################################

@@ -431,6 +431,11 @@ def emit_and_test(args):
     return ast.BoolOp(ast.And(), all_nots)
 
 
+def validate_assigns(assigns):
+    if not all(isinstance(c, ast.assignment_expr) for c in assigns):
+        raise ValueError("Invalid expression in assignment context")
+
+
 def emit_expr_assigns(args):
     test_list, assignments = args
 
@@ -441,7 +446,10 @@ def emit_expr_assigns(args):
         test_list = test_list,
 
     _, (*exprs, value) = zip(*assignments)
-    return ast.Assign(test_list + tuple(exprs), value)
+
+    assigns = test_list + tuple(exprs)
+    validate_assigns(assigns)
+    return ast.Assign(assigns, value)
 
 
 def emit_comparison(args):
