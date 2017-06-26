@@ -147,7 +147,7 @@ class ParenTokenizer(SelectableTokenizer):
 
 
 class SymbolTokenizer(SelectableTokenizer):
-    symbols = frozenset(";,.=|*-+/^&%?:")
+    symbols = frozenset(r'!"$%&\'*+,-./:;<=>?@^_`|~')
 
     def __init__(self):
         super().__init__()
