@@ -378,7 +378,7 @@ def parse(parser, tokens):
             break
 
     result = parser.derive_null()
-    return result
+    return result.copy()
 
 
 empty_parser = Empty()
