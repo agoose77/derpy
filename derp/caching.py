@@ -1,11 +1,25 @@
 from functools import wraps, update_wrapper
 
-cache_dict_type = dict
+
+_cache_dict_type = dict
+_root_caches = []
+
+
+def create_cache():
+    memo = _cache_dict_type()
+    _root_caches.append(memo)
+    return memo
+
+
+def clear_caches():
+    for cache in _root_caches:
+        cache.clear()
+
 
 
 def memoized(func):
     """Weakly memoized function accepting 0 non-self args"""
-    memo = cache_dict_type()
+    memo = create_cache()
 
     @wraps(func)
     def wrapper(self, memo=memo):
@@ -20,7 +34,7 @@ def memoized(func):
 
 def memoized_n(func):
     """Memoized function accepting self and *args"""
-    memo = cache_dict_type()
+    memo = create_cache()
 
     @wraps(func)
     def wrapper(self, *args, memo=memo, func=func):
@@ -35,7 +49,7 @@ def memoized_n(func):
 
 def recursive_memoize(func):
     """Compute the fixed point of a function F accepting no args"""
-    memo = cache_dict_type()
+    memo = create_cache()
 
     @wraps(func)
     def wrapper(self, memo=memo):
@@ -49,23 +63,15 @@ def recursive_memoize(func):
     return wrapper
 
 
-class _CachedProperty:
-    """Cached property descriptor"""
+def cached_property(func):
+    memo = create_cache()
 
-    def __init__(self, func):
-        self._func = func
-        self._cache = cache_dict_type()
-        update_wrapper(self, func)
-
-    def clear_cache(self):
-        self._cache.clear()
-
-    def __get__(self, instance, cls):
+    @property
+    @wraps(func)
+    def wrapper(self):
         try:
-            return self._cache[instance]
+            return memo[self]
         except KeyError:
-            self._cache[instance] = result = self._func.__get__(instance, cls)()
+            result = memo[self] = func.__get__(self)()
             return result
-
-
-cached_property = _CachedProperty
+    return wrapper
