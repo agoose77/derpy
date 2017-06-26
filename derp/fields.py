@@ -5,6 +5,13 @@ def __init__(self, {arg_list}):
 """
 
 _field_assignment_stmt = "self.{0} = {0}"
+_repr_getter_stmt = "self.{0}"
+
+_field_repr_body = \
+"""
+def __repr__(self):
+    return f"{cls_name}({repr_str})"
+"""
 
 
 class FieldMeta(type):
@@ -14,7 +21,7 @@ class FieldMeta(type):
     """
 
     def __new__(metacls, name, bases, cls_dict, fields=None):
-        if fields is not None:
+        if fields:
             field_names = tuple(fields.split())
 
             assert all(f.isidentifier() for f in field_names), "invalid field names given {}".format(fields)
@@ -27,6 +34,12 @@ class FieldMeta(type):
 
         else:
             field_names = ()
+
+        # Repr definition
+        repr_str = ', '.join("{}={{{}!r}}".format(f, _repr_getter_stmt.format(f))
+                             for f in field_names)
+        repr_body = _field_repr_body.format(cls_name=name, repr_str=repr_str)
+        exec(repr_body, cls_dict)
 
         cls_dict['__slots__'] = field_names
         cls_dict['_fields'] = field_names
