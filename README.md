@@ -8,19 +8,20 @@ See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.ht
 
 This parser would be represented as 
 ```python
-from derp.parsers import Recurrence, lit, empty_string
-s = Recurrence()
+from derp import rec, lit, empty_string
+s = rec()
 s.parser = empty_string | (lit('1') & s)
 ```
 
 Or in short-hand
 ```python
-s = Recurrence()
+s = rec()
 s.parser = ~(lit('1') & s)
 ```
 
 This parser could parse any number of ones, before terminating.
 ```python
+from derp import Token
 parse(s, [Token('1', 1) for i in range(5)])
 >> {(1, (1, (1, (1, (1, '')))))}
 ```
@@ -43,15 +44,13 @@ Operator overloading (+, >>, ~, &, |) makes the process of writing a grammar les
 * `ter(c)` returns parser to match a token with the first attribute string equal to c.
 * `seq(l, r)` returns Concatenation parser of left and right. 
 * `alt(l, r)` returns Alternate parser of left and right. 
+* `rec()` returns a Recurrence parser (with `.parser` attribute to set recurrent parser)
 
 ## Python Grammar Parsing
 A Python parser example can be found in the `grammrs.python` module.
 It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar. Alternatively, the EBNF parser can be used to produce a Python grammar parser.
 
 Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested with an existing ast-to-code utility, simply by replacing the import to ast with our own).
-
-## Funnel Grammar Parsing
-A Funnel parser example can be found in the `grammars.funnel` module. Funnel is a custom lightweight language that allows embedded Python inside data model definitions
 
 ## [Py]EBNF Grammar Meta Parsing
 An example of parsing the Python EBNF grammar, to produce the source for a Python parser, can be found in the `grammars.ebnf`
