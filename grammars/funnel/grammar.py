@@ -4,7 +4,7 @@ from derp.parsers import lit, star
 from derp.utilities import unpack_n
 from grammars.funnel import ast
 from grammars.python import ast as py_ast
-from grammars.python.grammar import g
+from grammars.python.grammar import p
 
 
 def emit_module(args):
@@ -106,8 +106,8 @@ f.validate_block = (lit('validate') & lit(':') & f.block_suite) >> emit_validate
 f.block_suite = f.py_suite | f.if_stmt_inline
 f.if_stmt_inline = (lit('if') & f.py_test & lit(':') & f.py_simple_stmt) >> emit_if_stmt
 
-f.py_expr_stmt = g.expr_stmt
-f.py_simple_stmt = g.simple_stmt
-f.py_test = g.test
-f.py_suite = g.suite
+f.py_expr_stmt = p.expr_stmt
+f.py_simple_stmt = p.simple_stmt
+f.py_test = p.test
+f.py_suite = p.suite
 f.ensure_parsers_defined()

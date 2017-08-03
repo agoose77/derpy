@@ -3,9 +3,8 @@ from pathlib import Path
 from time import time
 
 from derp.ast import write_ast
-from derp.parsers import parse
-from grammars.python.grammar import g
-from grammars.python.tokenizer import tokenize_file
+from derp import parse
+from grammars.python import p, tokenize_file
 
 
 def main():
@@ -17,7 +16,7 @@ def main():
     print("Parsing: {} with {} tokens".format(args.filepath, len(tokens)))
 
     start_time = time()
-    result = parse(g.file_input, tokens)
+    result = parse(p.file_input, tokens)
     finish_time = time()
 
     if not result:

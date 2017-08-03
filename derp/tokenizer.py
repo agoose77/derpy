@@ -1,4 +1,4 @@
-from .parsers import Token
+from .token import Token
 
 FLOAT_REGEX = r"((^[0-9])|(^[1-9][0-9]*))\.[0-9]+$"
 INT_REGEX = r"^[1-9][0-9]*$"

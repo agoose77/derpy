@@ -3,10 +3,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from derp.ast import to_string
-from derp.parsers import parse
-from grammars.ebnf.meta_grammar import b
-from grammars.ebnf.tokenizer import Tokenizer
-from grammars.funnel.generate import ParserGenerator
+from derp import parse
+from grammars.ebnf import e, EBNFTokenizer, ParserGenerator
 
 from grammars import funnel
 
@@ -18,12 +16,12 @@ def main():
     parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
-    tokens = list(Tokenizer().tokenize_file(args.grammar_filepath))
+    tokens = list(EBNFTokenizer().tokenize_file(args.grammar_filepath))
     print("Parsing BNF grammar: {} with {} tokens".format(args.grammar_filepath, len(tokens)))
 
     # Parse funnel EBNF grammar
     start_time = time.monotonic()
-    result = parse(b.grammar, tokens)
+    result = parse(e.grammar, tokens)
     finish_time = time.monotonic()
 
     if not result:

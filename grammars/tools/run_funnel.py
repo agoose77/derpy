@@ -2,10 +2,9 @@ from argparse import ArgumentParser
 from pathlib import Path
 from time import time
 
-from derp.parsers import parse
 from derp.ast import to_string
-from grammars.funnel.grammar import f
-from grammars.funnel.tokenizer import tokenize_file
+from derp import parse
+from grammars.funnel import f, tokenize_file
 
 sample_path = Path(__file__).parent / "sample.funnel"
 

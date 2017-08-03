@@ -1,12 +1,11 @@
 import unittest
 
-from derp.parsers import lit, Token, Recurrence, parse
-from derp.utilities import rflatten
+from derp import lit, Token, rec, parse, rflatten
 
 
 class TestBasic(unittest.TestCase):
     def test_basic(self):
-        parser = Recurrence()
+        parser = rec()
         parser.parser = ~(parser & lit('1'))
 
         tokens = [Token('1', '1') for i in range(10)]

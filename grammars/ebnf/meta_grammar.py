@@ -77,20 +77,20 @@ def emit_comment(comment):
     return ast.Comment(comment)
 
 
-b = Grammar('EBNF')
+e = Grammar('EBNF')
 
-b.alt = (b.cat & +(lit('|') & b.cat)) >> emit_alt_parser
-b.cat = (b.star & +b.star) >> emit_concat_parser
-b.star = (b.plus & ~lit('*')) >> emit_star
-b.plus = (b.element & ~lit('+')) >> emit_plus
+e.alt = (e.cat & +(lit('|') & e.cat)) >> emit_alt_parser
+e.cat = (e.star & +e.star) >> emit_concat_parser
+e.star = (e.plus & ~lit('*')) >> emit_star
+e.plus = (e.element & ~lit('+')) >> emit_plus
 
-b.optional = (lit('[') & b.alt & lit(']')) >> emit_opt_parser
-b.grouped = (lit('(') & b.alt & lit(')')) >> emit_group_parser
+e.optional = (lit('[') & e.alt & lit(']')) >> emit_opt_parser
+e.grouped = (lit('(') & e.alt & lit(')')) >> emit_group_parser
 
-b.element = lit('ID') >> emit_id | b.grouped | b.optional | lit('LIT') >> emit_lit
+e.element = lit('ID') >> emit_id | e.grouped | e.optional | lit('LIT') >> emit_lit
 
-b.rule = (lit('ID') & lit(':') & b.alt & lit('\n')) >> emit_definition
-b.comment = lit('COMMENT') >> emit_comment
-b.grammar = (+(b.rule | lit('\n') | b.comment) & lit('ENDMARKER')) >> emit_grammar_parser
+e.rule = (lit('ID') & lit(':') & e.alt & lit('\n')) >> emit_definition
+e.comment = lit('COMMENT') >> emit_comment
+e.grammar = (+(e.rule | lit('\n') | e.comment) & lit('ENDMARKER')) >> emit_grammar_parser
 
-b.ensure_parsers_defined()
+e.ensure_parsers_defined()
