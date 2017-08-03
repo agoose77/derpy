@@ -21,7 +21,7 @@ s.parser = ~(lit('1') & s)
 
 This parser could parse any number of ones, before terminating.
 ```python
-from derp import Token
+from derp import Token, parse
 parse(s, [Token('1', 1) for i in range(5)])
 >> {(1, (1, (1, (1, (1, '')))))}
 ```
