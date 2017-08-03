@@ -73,6 +73,10 @@ def emit_lit(lit):
     return ast.LitParser(lit)
 
 
+def emit_comment(comment):
+    return ast.Comment(comment)
+
+
 b = Grammar('EBNF')
 
 b.alt = (b.cat & +(lit('|') & b.cat)) >> emit_alt_parser
@@ -86,6 +90,7 @@ b.grouped = (lit('(') & b.alt & lit(')')) >> emit_group_parser
 b.element = lit('ID') >> emit_id | b.grouped | b.optional | lit('LIT') >> emit_lit
 
 b.rule = (lit('ID') & lit(':') & b.alt & lit('\n')) >> emit_definition
-b.grammar = (+(b.rule | lit('\n')) & lit('ENDMARKER')) >> emit_grammar_parser
+b.comment = lit('COMMENT') >> emit_comment
+b.grammar = (+(b.rule | lit('\n') | b.comment) & lit('ENDMARKER')) >> emit_grammar_parser
 
 b.ensure_parsers_defined()

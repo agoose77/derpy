@@ -32,7 +32,7 @@ class Token(metaclass=FieldMeta, fields='first second'):
         return type(other) is Token and other.first == self.first and other.second == self.second
 
     def __repr__(self):
-        return "Token({!r}, {!r})".format(self.first, self.second)
+        return f"Token({self.first!r}, {self.second!r})"
 
 
 class OperatorMixin:
@@ -249,7 +249,7 @@ class Epsilon(BaseParser, fields='_trees'):
         return super().__new__(cls)
 
     def as_string(self):
-        return "Epsilon({!r})".format(self._trees)
+        return f"Epsilon({self._trees!r})"
 
     @classmethod
     def from_value(cls, value):
@@ -296,7 +296,7 @@ class Reduce(FixedPoint, fields='parser func'):
             def combination(token):
                 return outer(inner(token))
 
-            combination.__name__ = "{}({})".format(outer.__name__, inner.__name__)
+            combination.__name__ = f"{outer.__name__}({inner.__name__})"
 
             return self.__class__(sub_reduction.parser, combination)
 
@@ -312,7 +312,7 @@ class Reduce(FixedPoint, fields='parser func'):
 
 class Literal(BaseParser, fields='string'):
     def as_string(self):
-        return "Ter({})".format(self.string)
+        return f"Ter({self.string})"
 
     def derive(self, token):
         return Epsilon.from_value(token.second) if token.first == self.string else empty_parser

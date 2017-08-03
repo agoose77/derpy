@@ -27,7 +27,7 @@ def recursion_guard_text(func):
             context.seen.add(self)
 
             return func(self, context)
-        return "{}(...)".format(self.as_string)
+        return f"{self.as_string}(...)"
 
     return wrapper
 

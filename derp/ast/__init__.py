@@ -172,11 +172,17 @@ def write_ast(node, writer, level=0, indent='  ', format_func=None):
 
 def iter_fields(node):
     """Return iterator over fields of AST node"""
+    if not isinstance(node, AST):
+        raise TypeError(f"Expected AST node, received {type(node).__name__}")
+
     return ((f, getattr(node, f)) for f in node._fields)
 
 
 def iter_child_nodes(node):
     """Return iterator over AST-derived fields of AST node"""
+    if not isinstance(node, AST):
+        raise TypeError(f"Expected AST node, received {type(node).__name__}")
+
     for key, value in iter_fields(node):
 
         if isinstance(value, AST):
@@ -193,6 +199,9 @@ def walk(node):
 
     :param node: root node
     """
+    if not isinstance(node, AST):
+        raise TypeError(f"Expected AST node, received {type(node).__name__}")
+
     todo = deque([node])
     while todo:
         node = todo.popleft()
@@ -203,15 +212,15 @@ def walk(node):
 class NodeVisitor:
     """Visit all nodes in AST and call corresponding visitor function"""
 
-    def generic_visit(self, node):
+    def generic_visit(self, node, *args, **kwargs):
         for child in iter_child_nodes(node):
-            self.visit(child)
+            self.visit(child, *args, **kwargs)
         return node
 
-    def visit(self, node):
+    def visit(self, node, *args, **kwargs):
         visitor_name = "visit_{}".format(node.__class__.__name__)
         visitor = getattr(self, visitor_name, self.generic_visit)
-        return visitor(node)
+        return visitor(node, *args, **kwargs)
 
 
 class NodeTransformer(NodeVisitor):
@@ -231,7 +240,7 @@ class NodeTransformer(NodeVisitor):
             new_value.append(item)
         return tuple(new_value)
 
-    def generic_visit(self, node):
+    def generic_visit(self, node, *args, **kwargs):
         has_changed = False
         new_values = []
 
@@ -242,7 +251,8 @@ class NodeTransformer(NodeVisitor):
                 new_value = self._generic_visit_tuple(value)
 
             elif isinstance(value, AST):
-                new_value = self.visit(value)
+                new_value = self.visit(value, *args
+                                       , **kwargs)
                 assert isinstance(new_value, AST) or new_value is None
 
             if new_value != value:

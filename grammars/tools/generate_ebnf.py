@@ -7,7 +7,7 @@ from derp.ast import to_string
 from derp.parsers import parse
 from grammars.ebnf.generate import ParserGenerator
 from grammars.ebnf.meta_grammar import b
-from grammars.ebnf.tokenizer import tokenize_file
+from grammars.ebnf.tokenizer import EBNFTokenizer
 
 default_path = Path(__file__).parent / "sample.ebnf"
 
@@ -17,7 +17,7 @@ def main():
     parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
-    tokens = list(tokenize_file(args.grammar_filepath))
+    tokens = list(EBNFTokenizer().tokenize_file(args.grammar_filepath))
     print("Parsing EBNF grammar: {} with {} tokens".format(args.grammar_filepath, len(tokens)))
 
     start_time = time.monotonic()

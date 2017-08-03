@@ -16,13 +16,13 @@ class Grammar:
         """Check all parsers are defined"""
         for name, parser in self._recurrences.items():
             if parser.parser is None:
-                raise ValueError("{} parser is not defined".format(name))
+                raise ValueError(f"{name} parser is not defined")
 
         object.__setattr__(self, '_frozen', True)
 
     def __getattr__(self, name):
         if self._frozen:
-            raise AttributeError("Frozen grammar has no rule {!r}".format(name))
+            raise AttributeError(f"Frozen grammar has no rule {name!r}")
 
         recurrence = self._recurrences[name] = Recurrence()
         object.__setattr__(self, name, recurrence)  # Assign recurrence to attribute
@@ -30,7 +30,7 @@ class Grammar:
 
     def __setattr__(self, name, value):
         if self._frozen:
-            raise AttributeError("Frozen grammar {} cannot be assigned to".format(self._name))
+            raise AttributeError(f"Frozen grammar {self._name} cannot be assigned to")
 
         if not isinstance(value, BaseParser):
             raise ValueError("Grammar rule must be assigned to an instance of BaseParser")
@@ -46,7 +46,7 @@ class Grammar:
 
             else:
                 if recurrence.parser is not None:
-                    raise ValueError('Recurrent parser {!r} already defined'.format(name))
+                    raise ValueError(f'Recurrent parser {name!r} already defined')
 
                 recurrence.parser = value
 
@@ -55,4 +55,4 @@ class Grammar:
             object.__setattr__(self, name, value)
 
     def __repr__(self):
-        return "Grammar(name={!r})".format(self._name)
+        return f"Grammar(name={self._name!r})"

@@ -36,8 +36,7 @@ class FieldMeta(type):
             field_names = ()
 
         # Repr definition
-        repr_str = ', '.join("{}={{{}!r}}".format(f, _repr_getter_stmt.format(f))
-                             for f in field_names)
+        repr_str = ', '.join(f"{f}={{_repr_getter_stmt.format(f)!r}}" for f in field_names)
         repr_body = _field_repr_body.format(cls_name=name, repr_str=repr_str)
         exec(repr_body, cls_dict)
 

@@ -27,6 +27,9 @@ from derp.parsers import lit, star
         rules = '\n'.join(statements)
         return self.grammar_declaration.format(name=self.name, variable=self.variable, rules=rules, self=self)
 
+    def visit_Comment(self, node):
+        return node.string
+
     def visit_ID(self, node):
         if node.name == "STRING":
             return "lit('LIT')"
@@ -58,7 +61,7 @@ from derp.parsers import lit, star
         return "{} | {}".format(left, right)  # Alternate(left, right)
 
     def visit_LitParser(self, node):
-        return "lit({!r})".format(node.lit)
+        return "lit({})".format(node.lit)
 
     def visit_ConcatParser(self, node):
         left = self.visit(node.left)

@@ -5,7 +5,7 @@ from pathlib import Path
 from derp.ast import to_string
 from derp.parsers import parse
 from grammars.ebnf.meta_grammar import b
-from grammars.ebnf.tokenizer import tokenize_file
+from grammars.ebnf.tokenizer import Tokenizer
 from grammars.funnel.generate import ParserGenerator
 
 from grammars import funnel
@@ -18,7 +18,7 @@ def main():
     parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
-    tokens = list(tokenize_file(args.grammar_filepath))
+    tokens = list(Tokenizer().tokenize_file(args.grammar_filepath))
     print("Parsing BNF grammar: {} with {} tokens".format(args.grammar_filepath, len(tokens)))
 
     # Parse funnel EBNF grammar
