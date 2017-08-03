@@ -24,7 +24,7 @@ class FieldMeta(type):
         if fields:
             field_names = tuple(fields.split())
 
-            assert all(f.isidentifier() for f in field_names), "invalid field names given {}".format(fields)
+            assert all(f.isidentifier() for f in field_names), f"invalid field names given {fields}"
 
             arg_list = ", ".join(field_names)
             assignment_body = "\n    ".join([_field_assignment_stmt.format(f) for f in field_names])
@@ -36,7 +36,7 @@ class FieldMeta(type):
             field_names = ()
 
         # Repr definition
-        repr_str = ', '.join(f"{f}={{_repr_getter_stmt.format(f)!r}}" for f in field_names)
+        repr_str = ', '.join(f"{f}={{{_repr_getter_stmt.format(f)!r}}}" for f in field_names)
         repr_body = _field_repr_body.format(cls_name=name, repr_str=repr_str)
         exec(repr_body, cls_dict)
 
