@@ -1,6 +1,8 @@
 import operator
 
-from derp import Grammar, lit, parse, unpack, Tokenizer, extracts, extract, context
+from typing import Union
+
+from derp import Grammar, lit, parse, Tokenizer, extracts, extract, context
 from derp.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
 
 Compound = AST.subclass("Compound", "left right")
@@ -10,7 +12,6 @@ Mul = Compound.subclass("Mul")
 Div = Compound.subclass("Div")
 Unary = AST.subclass("Unary", "child")
 Neg = Unary.subclass("Neg")
-
 
 g = Grammar("Calc")
 g.sum = (g.product |
@@ -60,7 +61,7 @@ class EvalVisitor(NodeVisitor):
     visit_Mul = _visit_compound_op
 
 
-def eval_ast(ast):
+def eval_ast(ast: AST) -> Union[int, float]:
     visitor = EvalVisitor()
     result = visitor.visit(ast)
     return result
