@@ -1,4 +1,5 @@
 from functools import wraps, update_wrapper
+from contextlib import contextmanager
 
 
 _cache_dict_type = dict
@@ -14,6 +15,12 @@ def create_cache():
 def clear_caches():
     for cache in _root_caches:
         cache.clear()
+
+
+@contextmanager
+def context():
+    yield
+    clear_caches()
 
 
 

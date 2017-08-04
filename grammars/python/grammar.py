@@ -1,9 +1,7 @@
 from collections import deque
 
+from derp import Grammar, lit, star, unpack
 from derp.ast import iter_fields
-from derp.grammar import Grammar
-from derp.parsers import lit, star
-from derp.utilities import unpack
 from grammars.python import ast
 
 

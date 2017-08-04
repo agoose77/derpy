@@ -1,3 +1,5 @@
+from keyword import iskeyword
+
 _field_init_body = \
 """
 def __init__(self, {arg_list}):
@@ -23,7 +25,11 @@ class FieldMeta(type):
     def __new__(metacls, name, bases, cls_dict, fields=None):
         if fields:
             field_names = tuple(fields.split())
-            assert all(n.isidentifier() for n in field_names), f"invalid field names given {fields}"
+            for name in field_names:
+                if not name.isidentifier():
+                    raise ValueError(f"Field name {name!r} is not a valid identifier")
+                if iskeyword(name):
+                    raise ValueError(f"Field name {name!r} is an existing Python keyword")
 
             arg_list = ", ".join(field_names)
             assignment_body = "\n    ".join((_field_assignment_stmt.format(n) for n in field_names))

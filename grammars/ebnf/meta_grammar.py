@@ -1,6 +1,4 @@
-from derp.grammar import Grammar
-from derp.parsers import lit
-from derp.utilities import unpack
+from derp import Grammar, lit, unpack
 from grammars.ebnf import ast
 
 

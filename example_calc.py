@@ -1,6 +1,6 @@
 import operator
 
-from derp import Grammar, lit, parse, unpack, Tokenizer, extracts, extract
+from derp import Grammar, lit, parse, unpack, Tokenizer, extracts, extract, context
 from derp.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
 
 Compound = AST.subclass("Compound", "left right")
@@ -75,7 +75,8 @@ if __name__ == "__main__":
     tokens = list(tokens)
     pprint(tokens)
 
-    ast = parse(g.equation, tokens).pop()
+    with context():
+        ast = parse(g.equation, tokens).pop()
     print(to_string(ast, formatter=cyclic_colour_formatter))
     result = eval_ast(ast)
     print(f"Result of {expr} is {result}")
