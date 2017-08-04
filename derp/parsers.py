@@ -115,7 +115,7 @@ class FixedPoint(BaseParser):
         if self._null_set is not None:
             return self._null_set
 
-        new_set = set()
+        new_set = frozenset()
 
         while True:
             self._null_set = new_set
@@ -191,7 +191,7 @@ class Concatenate(FixedPoint, fields='left right'):
         left_branch = self.left.derive_null()
         right_branch = self.right.derive_null()
 
-        return set(product(left_branch, right_branch))
+        return frozenset(product(left_branch, right_branch))
 
 
 class Delta(BaseParser, fields='parser'):
@@ -222,12 +222,12 @@ class Empty(BaseParser):
         return empty_parser
 
     def derive_null(self):
-        return set()
+        return frozenset()
 
 
 class Epsilon(BaseParser, fields='_trees'):
     def __new__(cls, trees):
-        if not type(trees) is set:
+        if not type(trees) is frozenset:
             raise ValueError(trees)
 
         if not trees:
@@ -293,7 +293,7 @@ class Reduce(FixedPoint, fields='parser func'):
         return self.__class__(self.parser.derive(token), self.func)
 
     def _derive_null(self):
-        return set(map(self.func, self.parser.derive_null()))
+        return frozenset(map(self.func, self.parser.derive_null()))
 
 
 class Literal(BaseParser, fields='string'):
@@ -302,7 +302,7 @@ class Literal(BaseParser, fields='string'):
         return Epsilon.from_value(token.second) if token.first == self.string else empty_parser
 
     def derive_null(self):
-        return set()
+        return frozenset()
 
 
 # API #####################################################
