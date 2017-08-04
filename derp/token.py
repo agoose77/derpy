@@ -8,7 +8,3 @@ class Token(metaclass=FieldMeta, fields='first second'):
         return type(other) is self.__class__ and \
                other.first == self.first and \
                other.second == self.second
-
-    def __repr__(self):
-        return f"Token({self.first!r}, {self.second!r})"
-

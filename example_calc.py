@@ -8,11 +8,7 @@ Compound = AST.subclass("Compound", "left right", module_name=__name__)
 Add = Compound.subclass("Add")
 Sub = Compound.subclass("Sub")
 Mul = Compound.subclass("Mul")
-
 Div = Compound.subclass("Div")
-
-FLOAT_REGEX = r"((^[0-9])|(^[1-9][0-9]*))\.[0-9]+$"
-INT_REGEX = r"^[1-9][0-9]*$"
 
 
 def emit_compound(f, args):
@@ -57,12 +53,14 @@ class EvalVisitor(NodeVisitor):
 
     def generic_visit(self, node, *args, **kwargs):
         node_type = type(node)
+
+        if not issubclass(node_type, AST):
+            return node
+
         try:
             op = self.eval_table[node_type]
         except KeyError:
-            if not isinstance(node, AST):
-                return node
-            return super().generic_visit(node, *args, **kwargs)
+            raise ValueError
 
         left = self.visit(node.left)
         right = self.visit(node.right)
