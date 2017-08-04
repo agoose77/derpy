@@ -22,6 +22,7 @@ from typing import Iterable, Callable
 from .caching import cached_property, memoized_n
 from .fields import FieldMeta
 from .token import Token
+from .tuple import unpack
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -33,19 +34,30 @@ class OperatorMixin:
     As parsers may operate upon their own types, these methods are defined later.
     """
 
-    def __and__(self, other):
+    def __and__(self, other) -> 'Concatenate':
         return cat(self, other)
 
-    def __or__(self, other):
+    def __or__(self, other) -> 'Alternate':
         return alt(self, other)
 
-    def __pos__(self):
-        return plus(self)
+    def __getitem__(self, item) ->  'BaseParser':
+        if item is Ellipsis:
+            return star(self)
 
-    def __invert__(self):
+        elif isinstance(item, slice):
+            # TODO if we want to support "between", write new macro
+            assert item.stop is None, "Cannot bound slice"
+            return least(self, item.start)
+
+
+        else:
+            assert isinstance(item, int)
+            return arr(self, item)
+
+    def __invert__(self) -> 'Alternate':
         return opt(self)
 
-    def __rshift__(self, other):
+    def __rshift__(self, other) -> 'Reduce':
         return red(self, other)
 
 
@@ -298,7 +310,7 @@ class Literal(BaseParser, fields='string'):
         return frozenset()
 
 
-# API #####################################################
+# Macro API #####################################################
 def plus(parser: BaseParser) -> Reduce:
     """Kleene plus (1+) parser"""
 
@@ -309,6 +321,19 @@ def plus(parser: BaseParser) -> Reduce:
         return (first,) + remainder
 
     return Reduce(Concatenate(parser, star(parser)), red_one_plus)
+
+
+def arr(parser: BaseParser, n: int):
+    assert n > 0
+
+    def red_array(args):
+        return tuple(unpack(args, n))
+
+    p = parser
+    for i in range(n-1):
+        p = Concatenate(p, parser)
+
+    return Reduce(p, red_array)
 
 
 def star(parser: BaseParser) -> Recurrence:
@@ -325,6 +350,21 @@ def star(parser: BaseParser) -> Recurrence:
                                                        red_repeat)
                                   )  # recurrence = ~(parser & recurrence)
     return recurrence
+
+
+def least(parser: BaseParser, n: int):
+    assert n >= 0
+    if n > 0:
+        def reduce_slice(args):
+            array, remainder = args
+            if remainder == '':
+                return array
+            return array + remainder
+
+        p = cat(arr(parser, n), star(parser))
+        return Reduce(p, reduce_slice)
+
+    return plus(parser)
 
 
 def opt(parser: BaseParser) -> Alternate:

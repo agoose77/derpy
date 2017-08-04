@@ -41,7 +41,7 @@ from derp.parsers import lit, star
             return "{}.{}".format(self.variable, node.name)
 
     def visit_OptParser(self, node):
-        child_text = self.visit(node.child)
+        child_text = self.visit(node.child) # TODO check composite / reduction here, remove brackets
         return "~({})".format(child_text)
 
     def visit_GroupParser(self, node):

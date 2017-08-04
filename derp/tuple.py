@@ -1,7 +1,7 @@
 from typing import Any, Callable, Iterable, Tuple
 
 
-def extracts(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], tuple]:
+def selects(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], tuple]:
     """Build wrapper which returns selected arguments"""
 
     def wrapper(args):
@@ -11,7 +11,7 @@ def extracts(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple],
     return wrapper
 
 
-def extract(n: int, index: int, first=True) -> Callable[[tuple], Any]:
+def select(n: int, index: int, first=True) -> Callable[[tuple], Any]:
     """Build wrapper which returns selected argument"""
 
     def wrapper(args):
@@ -21,28 +21,19 @@ def extract(n: int, index: int, first=True) -> Callable[[tuple], Any]:
     return wrapper
 
 
-def flatten(seq: Iterable, first=True) -> tuple:
-    """Recursively flatten nested tuples into flat list
+def flattens(seq: Iterable, n: int, first=True) -> Callable[[tuple], Any]:
+    """Build wrapper which flattens nested tuples into 1d tuple"""
 
-    (x, (y, z)) defines last ordering,
-    ((x, y), z) defines first ordering.
-    """
-    while True:
-        if not isinstance(seq, tuple):
-            yield seq
-            return
+    def wrapper(args):
+        all_args = tuple(unpack(args, n, first))
+        return all_args
 
-        if first:
-            seq, x = seq
-        else:
-            x, seq = seq
-
-        yield x
+    return wrapper
 
 
 def partial(f, n, *indices, first=True) -> Callable[[tuple], Any]:
     """Build wrapper which returns result of f(...) with selected arguments"""
-    extractor = extracts(n, *indices, first)
+    extractor = selects(n, *indices, first)
 
     def wrapper(args):
         return f(*extractor(args))

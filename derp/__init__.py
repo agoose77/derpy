@@ -6,8 +6,7 @@ See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.ht
 from . import ast
 from .caching import context
 from .grammar import Grammar
-from .parsers import lit, cat, alt, opt, star, plus, parse, rec, red, empty_string, empty_parser
+from .parsers import arr, lit, least, cat, alt, opt, star, plus, parse, rec, red, empty_string, empty_parser
 from .token import Token
 from .tokenizer import Tokenizer
-from .tuple import unpack, flatten, extracts, extract, partial
-
+from .tuple import unpack, flattens, selects, select, partial

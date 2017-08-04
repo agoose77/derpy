@@ -2,7 +2,7 @@ import operator
 
 from typing import Union
 
-from derp import Grammar, lit, parse, Tokenizer, extracts, extract, context
+from derp import Grammar, lit, parse, Tokenizer, selects, select, context
 from derp.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
 
 Compound = AST.subclass("Compound", "left right")
@@ -15,18 +15,18 @@ Neg = Unary.subclass("Neg")
 
 g = Grammar("Calc")
 g.sum = (g.product |
-         (g.sum & lit('+') & g.product) >> extracts(3, 0, 2) >> Add.from_tuple |
-         (g.sum & lit('-') & g.product) >> extracts(3, 0, 2) >> Sub.from_tuple
+         (g.sum & lit('+') & g.product) >> selects(3, 0, 2) >> Add.from_tuple |
+         (g.sum & lit('-') & g.product) >> selects(3, 0, 2) >> Sub.from_tuple
          )
 g.product = (g.item |
-             (g.product & lit('*') & g.item) >> extracts(3, 0, 2) >> Mul.from_tuple |
-             (g.product & lit('/') & g.item) >> extracts(3, 0, 2) >> Div.from_tuple
+             (g.product & lit('*') & g.item) >> selects(3, 0, 2) >> Mul.from_tuple |
+             (g.product & lit('/') & g.item) >> selects(3, 0, 2) >> Div.from_tuple
              )
 g.item = (lit('NUMBER') |
-          (lit('-') & g.item) >> extract(2, 1) >> Neg
-          ((lit('(') & g.sum & lit(')')) >> extracts(3, 1))
+          (lit('-') & g.item) >> select(2, 1) >> Neg
+          ((lit('(') & g.sum & lit(')')) >> selects(3, 1))
           )
-g.equation = (g.sum & lit('ENDMARKER')) >> extract(2, 0)
+g.equation = (g.sum & lit('ENDMARKER')) >> select(2, 0)
 
 
 class EvalVisitor(NodeVisitor):
