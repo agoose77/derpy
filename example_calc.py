@@ -76,7 +76,8 @@ if __name__ == "__main__":
     pprint(tokens)
 
     with context():
-        ast = parse(g.equation, tokens).pop()
+        ast = next(iter(parse(g.equation, tokens)))
+
     print(to_string(ast, formatter=cyclic_colour_formatter))
     result = eval_ast(ast)
     print(f"Result of {expr} is {result}")

@@ -30,7 +30,7 @@ def main():
 
     else:
         print("Successfully parsed EBNF in {:.3f}s".format(finish_time-start_time))
-        root = result.pop()
+        root = next(iter(result))
         print("==========Built AST============")
         print(to_string(root))
         #

@@ -28,7 +28,7 @@ def main():
     else:
         print("Parsed in {:.3f}s".format(finish_time - start_time))
 
-        module = result.pop()
+        module = next(iter(result))
         output_filename = args.filepath.parent / "{}.ast".format(args.filepath.name)
 
         with open(output_filename, 'w') as f:

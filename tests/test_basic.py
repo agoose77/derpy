@@ -12,7 +12,7 @@ class TestBasic(unittest.TestCase):
         result = parse(parser, tokens)
 
         self.assert_(result)
-        tuple_ = result.pop()
+        tuple_ = next(iter(result))
         flattened = tuple(flatten(tuple_))
         self.assertEqual(len(flattened), 10 + 1)
 

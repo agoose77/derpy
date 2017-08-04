@@ -16,9 +16,12 @@ captures the progress of the parsing process. In other words, taking the derivat
 """
 from abc import ABCMeta, abstractmethod
 from itertools import product
+from typing import Iterable
+
 
 from .caching import cached_property, memoized_n
 from .fields import FieldMeta
+from .token import Token
 
 __all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
            'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
@@ -360,7 +363,7 @@ def rec():
     return Recurrence()
 
 
-def parse(parser, tokens):
+def parse(parser: BaseParser, tokens: Iterable[Token]) -> frozenset:
     for i, token in enumerate(tokens):
         parser = parser.derive(token)
         parser = parser.compact()
@@ -368,8 +371,7 @@ def parse(parser, tokens):
         if parser is empty_parser:
             break
 
-    result = parser.derive_null()
-    return result.copy()
+    return parser.derive_null()
 
 
 empty_parser = Empty()

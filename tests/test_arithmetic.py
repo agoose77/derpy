@@ -52,7 +52,7 @@ class TestBasic(unittest.TestCase):
         result = parse(g.expr, tokens)
         self.assert_(result)
 
-        tuple_ast = result.pop()
+        tuple_ast = next(iter(result))
         self.assertEqual(tuple_ast, ("expr", ("mult", ("mult", 1, 3), 4)))
 
 
