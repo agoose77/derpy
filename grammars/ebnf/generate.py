@@ -70,8 +70,8 @@ from derp.parsers import lit, star
 
     def visit_ManyParser(self, node):
         parser = self.visit(node.child)
-        return "+{}".format(parser)
+        return "star({})".format(parser)
 
     def visit_OnePlusParser(self, node):
         parser = self.visit(node.child)
-        return "star({})".format(parser)
+        return "plus({})".format(parser)

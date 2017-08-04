@@ -299,17 +299,21 @@ class Literal(BaseParser, fields='string'):
 
 
 # API #####################################################
-def star(parser: BaseParser) -> Reduce:
+def plus(parser: BaseParser) -> Reduce:
+    """Kleene plus (1+) parser"""
+
     def red_one_plus(args):
         first, remainder = args
         if remainder == '':
             return first,
         return (first,) + remainder
 
-    return Reduce(Concatenate(parser, plus(parser)), red_one_plus)
+    return Reduce(Concatenate(parser, star(parser)), red_one_plus)
 
 
-def plus(parser: BaseParser) -> Recurrence:
+def star(parser: BaseParser) -> Recurrence:
+    """Kleene star (0+) parser"""
+
     def red_repeat(args):
         first, remainder = args
         if remainder == '':
