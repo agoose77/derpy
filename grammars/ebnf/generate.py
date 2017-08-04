@@ -6,8 +6,7 @@ from .ast import CompoundParser
 
 class ParserGenerator(NodeVisitor):
     grammar_declaration = """
-from derp.grammar import Grammar
-from derp.parsers import lit, star
+from derp import Grammar, lit
 
 {variable} = Grammar({name!r})
 {rules}
