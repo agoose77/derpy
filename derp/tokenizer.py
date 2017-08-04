@@ -5,20 +5,19 @@ INT_REGEX = r"^[1-9][0-9]*$"
 
 from ast import literal_eval
 from re import compile as re_compile, escape
-from typing import Generator
-
+from typing import Generator, Dict, Any, Tuple
 
 PatternType = type(re_compile('.'))
-MatchType = type(re_compile('.').match(' 'd))
+MatchType = type(re_compile('.').match(' '))
 
 
 class Tokenizer:
-    NO_MATCH_NAME = "NO_MATCH"
-    OP_CHARACTERS = "+/-*^%!~@.<>&|"
-    PAREN_CHARACTERS = "()[]{}"
+    NO_MATCH_NAME: str = "NO_MATCH"
+    OP_CHARACTERS: str = "+/-*^%!~@.<>&|"
+    PAREN_CHARACTERS: str = "()[]{}"
 
-    keywords = frozenset()
-    patterns = (
+    keywords: frozenset = frozenset()
+    patterns: Tuple[Tuple[str, str], ...] = (
         ('NUMBER', r'\d+(\.\d*)?'),
         ('LIT', r"'([^']+)'"),
         ('ID', r"[a-zA-Z_][a-zA-Z0-9_]*"),
@@ -27,7 +26,7 @@ class Tokenizer:
         ('NEWLINE', r'\n'),
         ('FORMAT', r'[ \t]+'),
     )
-    default_pattern = (NO_MATCH_NAME, r'.')
+    default_pattern: Tuple[str, str] = (NO_MATCH_NAME, r'.')
 
     def __init__(self):
         self.pattern = self.create_pattern()
@@ -37,7 +36,7 @@ class Tokenizer:
         full_match_string = "|".join(f'(?P<{n}>{m})' for n, m in patterns)
         return re_compile(full_match_string)
 
-    def create_context(self, string: str) -> dict:
+    def create_context(self, string: str) -> Dict[str, Any]:
         return {'line_number': 1, 'char_number': 0, 'string': string}
 
     def default_handler(self, match: MatchType, value, context: dict) -> Token:

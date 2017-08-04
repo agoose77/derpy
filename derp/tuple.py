@@ -1,4 +1,7 @@
-def flatten(seq, first=True):
+from typing import Any, Callable, Iterable, Tuple
+
+
+def flatten(seq: Iterable, first=True) -> tuple:
     """Recursively flatten nested tuples into flat list
 
     (x, (y, z)) defines last ordering,
@@ -17,7 +20,7 @@ def flatten(seq, first=True):
         yield x
 
 
-def unpack(seq, n, first=True):
+def unpack(seq: Iterable, n: int, first=True) -> tuple:
     """Flatten N nested tuples into flat list
 
     (x, (y, z)) defines last ordering,
@@ -40,8 +43,8 @@ def unpack(seq, n, first=True):
         yield seq
 
 
-def extracts(n, *indices, first=True):
-    """Reduction to extract given args from parser"""
+def extracts(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], tuple]:
+    """Build wrapper which returns selected arguments"""
 
     def wrapper(args):
         all_args = tuple(unpack(args, n, first))
@@ -50,8 +53,8 @@ def extracts(n, *indices, first=True):
     return wrapper
 
 
-def extract(n, index, first=True):
-    """Reduction to extract given arg from parser"""
+def extract(n: int, index: int, first=True) -> Callable[[tuple], Any]:
+    """Build wrapper which returns selected argument"""
 
     def wrapper(args):
         all_args = tuple(unpack(args, n, first))
@@ -60,7 +63,8 @@ def extract(n, index, first=True):
     return wrapper
 
 
-def partial(f, n, *indices, first=True):
+def partial(f, n, *indices, first=True) -> Callable[[tuple], Any]:
+    """Build wrapper which returns result of f(...) with selected arguments"""
     extractor = extracts(n, *indices, first)
 
     def wrapper(args):
