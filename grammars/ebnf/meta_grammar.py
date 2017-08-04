@@ -1,6 +1,6 @@
 from derp.grammar import Grammar
 from derp.parsers import lit
-from derp.utilities import unpack_n
+from derp.utilities import unpack
 from grammars.ebnf import ast
 
 
@@ -15,7 +15,7 @@ def emit_lit_parser(text):
 
 
 def emit_opt_parser(args):
-    _, child, _ = unpack_n(args, 3)
+    _, child, _ = unpack(args, 3)
     return ast.OptParser(child)
 
 
@@ -34,12 +34,12 @@ def emit_plus(args):
 
 
 def emit_group_parser(args):
-    _, child, _ = unpack_n(args, 3)
+    _, child, _ = unpack(args, 3)
     return ast.GroupParser(child)
 
 
 def emit_definition(args):
-    name, _, child, _ = unpack_n(args, 4)
+    name, _, child, _ = unpack(args, 4)
     return ast.RuleDefinition(name, child)
 
 
@@ -49,7 +49,7 @@ def emit_file(args):
 
 
 def emit_alt_parser(args):
-    node, expr_tuple = unpack_n(args, 2)
+    node, expr_tuple = unpack(args, 2)
     if expr_tuple:
         _, exprs = zip(*expr_tuple)
         for expr in exprs:

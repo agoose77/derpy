@@ -1,6 +1,6 @@
 import unittest
 
-from derp import Grammar, Token, parse, lit, alt, unpack_n
+from derp import Grammar, Token, parse, lit, alt, unpack
 
 
 def apply(op, seq):
@@ -12,17 +12,17 @@ def apply(op, seq):
 
 
 def emit_add_expr(args):
-    l, _, r = unpack_n(args, 3)
+    l, _, r = unpack(args, 3)
     return ('add', l, r)
 
 
 def emit_mult_expr(args):
-    l, _, r = unpack_n(args, 3)
+    l, _, r = unpack(args, 3)
     return ('mult', l, r)
 
 
 def emit_bracketed(args):
-    l, body, r = unpack_n(args, 3)
+    l, body, r = unpack(args, 3)
     return body
 
 

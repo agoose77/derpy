@@ -1,7 +1,6 @@
 import operator
-from functools import partial
 
-from derp import Grammar, lit, parse, unpack_n, Tokenizer
+from derp import Grammar, lit, parse, unpack, Tokenizer, extracts, extract
 from derp.ast import AST, NodeVisitor
 
 Compound = AST.subclass("Compound", "left right", module_name=__name__)
@@ -9,19 +8,21 @@ Add = Compound.subclass("Add")
 Sub = Compound.subclass("Sub")
 Mul = Compound.subclass("Mul")
 Div = Compound.subclass("Div")
+Unary = AST.subclass("Unary", "child")
+Neg = Unary.subclass("Neg")
 
 
 def emit_compound(f, args):
-    l, _, r = unpack_n(args, 3)
+    l, _, r = unpack(args, 3)
     return f(l, r)
 
 
 def emit_neg(args):
-    return args[1]
+    return Neg(args[1])
 
 
 def emit_paren(args):
-    _, x, _ = unpack_n(args, 3)
+    _, x, _ = unpack(args, 3)
     return x
 
 
@@ -31,18 +32,18 @@ def emit_eqn(args):
 
 g = Grammar("Calc")
 g.sum = (g.product |
-         (g.sum & lit('+') & g.product) >> partial(emit_compound, Add) |
-         (g.sum & lit('-') & g.product) >> partial(emit_compound, Sub)
+         (g.sum & lit('+') & g.product) >> extracts(3, 0, 2) >> Add.from_tuple |
+         (g.sum & lit('-') & g.product) >> extracts(3, 0, 2) >> Sub.from_tuple
          )
 g.product = (g.item |
-             (g.product & lit('*') & g.item) >> partial(emit_compound, Mul) |
-             (g.product & lit('/') & g.item) >> partial(emit_compound, Div)
+             (g.product & lit('*') & g.item) >> extracts(3, 0, 2) >> Mul.from_tuple |
+             (g.product & lit('/') & g.item) >> extracts(3, 0, 2) >> Add.from_tuple
              )
 g.item = (lit('NUMBER') |
-          (lit('-') & g.item) >> emit_neg |
-          ((lit('(') & g.sum & lit(')')) >> emit_paren)
+          (lit('-') & g.item) >> extract(2, 1) >> Neg
+          ((lit('(') & g.sum & lit(')')) >> extracts(3, 1))
           )
-g.equation = (g.sum & lit('ENDMARKER')) >> emit_eqn
+g.equation = (g.sum & lit('ENDMARKER')) >> extract(2, 0)
 
 
 class EvalVisitor(NodeVisitor):
@@ -51,20 +52,30 @@ class EvalVisitor(NodeVisitor):
                   Div: operator.truediv,
                   Add: operator.add}
 
-    def generic_visit(self, node, *args, **kwargs):
-        node_type = type(node)
+    def _visit_or_return(self, value):
+        if isinstance(value, AST):
+            return self.visit(value)
+        return value
 
-        if not issubclass(node_type, AST):
-            return node
+    def _visit_compound_op(self, node):
+        node_type = type(node)
 
         try:
             op = self.eval_table[node_type]
         except KeyError:
             raise ValueError
 
-        left = self.visit(node.left)
-        right = self.visit(node.right)
+        left = self._visit_or_return(node.left)
+        right = self._visit_or_return(node.right)
         return op(left, right)
+
+    def visit_Neg(self, node):
+        return -self._visit_or_return(node.child)
+
+    visit_Add = _visit_compound_op
+    visit_Sub = _visit_compound_op
+    visit_Div = _visit_compound_op
+    visit_Mul = _visit_compound_op
 
 
 def eval_ast(ast):
@@ -74,7 +85,7 @@ def eval_ast(ast):
 
 
 if __name__ == "__main__":
-    expr = "99+1+2+3*4"
+    expr = "99+1"
     tokens = Tokenizer().tokenize_text(expr)
 
     from pprint import pprint

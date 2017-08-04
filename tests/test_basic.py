@@ -1,6 +1,6 @@
 import unittest
 
-from derp import lit, Token, rec, parse, rflatten
+from derp import lit, Token, rec, parse, flatten
 
 
 class TestBasic(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestBasic(unittest.TestCase):
 
         self.assert_(result)
         tuple_ = result.pop()
-        flattened = tuple(rflatten(tuple_))
+        flattened = tuple(flatten(tuple_))
         self.assertEqual(len(flattened), 10 + 1)
 
 

@@ -3,14 +3,14 @@ from collections import deque
 from derp.ast import iter_fields
 from derp.grammar import Grammar
 from derp.parsers import lit, star
-from derp.utilities import unpack_n
+from derp.utilities import unpack
 from grammars.python import ast
 
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
 
 def emit_func_def(args):
-    _, name, params, ret_type, _, body = unpack_n(args, 6)
+    _, name, params, ret_type, _, body = unpack(args, 6)
     decorators = ()
 
     if ret_type == '':
@@ -30,7 +30,7 @@ def emit_func_def(args):
 
 
 def emit_params(args):
-    _, typed_args, _ = unpack_n(args, 3)
+    _, typed_args, _ = unpack(args, 3)
     return typed_args
 
 
@@ -71,7 +71,7 @@ def emit_import_from_all(args):
 
 
 def emit_import_from_names(args):
-    alias, remainder, _ = unpack_n(args, 3)
+    alias, remainder, _ = unpack(args, 3)
 
     if remainder == '':
         aliases = alias,
@@ -83,7 +83,7 @@ def emit_import_from_names(args):
 
 
 def emit_dotted_as_names(args):
-    alias, remainder = unpack_n(args, 2)
+    alias, remainder = unpack(args, 2)
 
     if remainder == '':
         aliases = alias,
@@ -95,12 +95,12 @@ def emit_dotted_as_names(args):
 
 
 def emit_import_from_names_paren(args):
-    _, name_args, _ = unpack_n(args, 3)
+    _, name_args, _ = unpack(args, 3)
     return name_args
 
 
 def emit_import_from(args):
-    _, module, _, submodule = unpack_n(args, 4)
+    _, module, _, submodule = unpack(args, 4)
     return ast.ImportFrom(module.module, submodule.aliases, module.level)
 
 
@@ -110,7 +110,7 @@ def emit_import(args):
 
 
 def emit_nonlocal(args):
-    _, name, names = unpack_n(args, 3)
+    _, name, names = unpack(args, 3)
     if names != '':
         other_names = tuple(n[1] for n in names)
     else:
@@ -119,7 +119,7 @@ def emit_nonlocal(args):
 
 
 def emit_global(args):
-    _, name, names = unpack_n(args, 3)
+    _, name, names = unpack(args, 3)
     if names != '':
         other_names = tuple(n[1] for n in names)
     else:
@@ -128,7 +128,7 @@ def emit_global(args):
 
 
 def emit_assert(args):
-    _, test, msg = unpack_n(args, 3)
+    _, test, msg = unpack(args, 3)
     if msg != '':
         _, message = msg
     else:
@@ -137,7 +137,7 @@ def emit_assert(args):
 
 
 def emit_lambda_def(args):
-    _, varargs, _, test = unpack_n(args, 4)
+    _, varargs, _, test = unpack(args, 4)
     return ast.LambdaDef(varargs, test)
 
 
@@ -149,25 +149,25 @@ def emit_return(args):
 
 
 def emit_if(args):
-    _, condition, _, body, elifs, else_ = unpack_n(args, 6)
+    _, condition, _, body, elifs, else_ = unpack(args, 6)
 
     # Unpack the else statements
     if else_ == '':
         orelse = ()
     else:
-        _, _, orelse = unpack_n(else_, 3)
+        _, _, orelse = unpack(else_, 3)
 
     # Now deal with elifs
     if elifs != '':
         for elem in reversed(elifs):
-            _, else_condition, _, else_body = unpack_n(elem, 4)
+            _, else_condition, _, else_body = unpack(elem, 4)
             orelse = ast.If(else_condition, else_body, orelse),
 
     return ast.If(condition, body, orelse)
 
 
 def emit_while(args):
-    _, condition, _, body, else_ = unpack_n(args, 5)
+    _, condition, _, body, else_ = unpack(args, 5)
     if else_ == '':
         else_stmt = None
     else:
@@ -176,7 +176,7 @@ def emit_while(args):
 
 
 def emit_for(args):
-    _, target, _, iterable, _, body, optelse = unpack_n(args, 7)
+    _, target, _, iterable, _, body, optelse = unpack(args, 7)
     else_ = () if optelse == '' else optelse
 
     if isinstance(target, tuple):
@@ -186,7 +186,7 @@ def emit_for(args):
 
 
 def emit_with(args):
-    _, with_item, with_items, _, body = unpack_n(args, 5)
+    _, with_item, with_items, _, body = unpack(args, 5)
     if with_items == '':
         all_items = with_item,
     else:
@@ -203,12 +203,12 @@ def emit_with_item(args):
 
 
 def emit_try_except_else_finally(args):
-    excepts_and_bodies, opt_else_raw, opt_finally_raw = unpack_n(args, 3)
+    excepts_and_bodies, opt_else_raw, opt_finally_raw = unpack(args, 3)
 
     except_handlers_list = []
 
     for element in excepts_and_bodies:
-        clause, _, body = unpack_n(element, 3)
+        clause, _, body = unpack(element, 3)
         _, opt_alias = clause
 
         type_ = None
@@ -224,24 +224,24 @@ def emit_try_except_else_finally(args):
     if opt_else_raw == '':
         orelse = ()
     else:
-        _, _, orelse = unpack_n(opt_else_raw, 3)
+        _, _, orelse = unpack(opt_else_raw, 3)
 
     if opt_finally_raw == '':
         finalbody = ()
     else:
-        _, _, finalbody = unpack_n(opt_finally_raw, 3)
+        _, _, finalbody = unpack(opt_finally_raw, 3)
 
     return ast.tryexceptelsefinally(except_handlers, orelse, finalbody)
 
 
 def emit_try_finally(args):
-    _, _, body = unpack_n(args, 3)
+    _, _, body = unpack(args, 3)
 
     return ast.tryfinally(body)
 
 
 def emit_try(args):
-    _, _, body, following = unpack_n(args, 4)
+    _, _, body, following = unpack(args, 4)
     # Try = stmt.subclass('Try', 'body handlers orelse finalbody')
     if isinstance(following, ast.tryexceptelsefinally):
         return ast.Try(body, following.handlers, following.orelse, following.finalbody)
@@ -276,7 +276,7 @@ def emit_tfpdef(args):
 
 
 def emit_varargs(args):
-    _, vararg, any_opt_ass, kwarg = unpack_n(args, 4)
+    _, vararg, any_opt_ass, kwarg = unpack(args, 4)
     if vararg == '':
         vararg = None
 
@@ -305,7 +305,7 @@ def emit_varargs(args):
 
 
 def emit_first(args):
-    opt_ass_first, remaining_opt_ass, opt_remainder = unpack_n(args, 3)
+    opt_ass_first, remaining_opt_ass, opt_remainder = unpack(args, 3)
 
     if remaining_opt_ass == '':
         args_optional_values = (opt_ass_first,)
@@ -352,7 +352,7 @@ def emit_first(args):
 
 
 def emit_simple_stmt(args):
-    first_stmt, remainder, opt_colon, newline = unpack_n(args, 4)
+    first_stmt, remainder, opt_colon, newline = unpack(args, 4)
     if remainder != '':
         all_stmts = (first_stmt,) + tuple(s for c, s in remainder)
     else:
@@ -365,12 +365,12 @@ def emit_test_left(args):
     or_test, opt_if = args
     if opt_if == '':
         return or_test
-    _, cond, _, orelse = unpack_n(opt_if, 4)
+    _, cond, _, orelse = unpack(opt_if, 4)
     return ast.IfExp(cond, or_test, orelse)
 
 
 def emit_test_list_star_expr(args):
-    test_or_star, opt_following_test_or_star, opt_trailing_comma = unpack_n(args, 3)
+    test_or_star, opt_following_test_or_star, opt_trailing_comma = unpack(args, 3)
     if opt_following_test_or_star != '':
         _, exprs = zip(*opt_following_test_or_star)
         all_exprs = (test_or_star,) + exprs
@@ -379,7 +379,7 @@ def emit_test_list_star_expr(args):
 
 
 def emit_test_list(args):
-    first, remainder, opt_trail = unpack_n(args, 3)
+    first, remainder, opt_trail = unpack(args, 3)
     if remainder == '':
         return first
     _, following = zip(*remainder)
@@ -387,7 +387,7 @@ def emit_test_list(args):
 
 
 def emit_expr_augassign(args):
-    test_list, augassign, yield_or_test_list = unpack_n(args, 3)
+    test_list, augassign, yield_or_test_list = unpack(args, 3)
     if isinstance(test_list, ast.Tuple):
         raise SyntaxError("Invalid multiple assignments for augassign")
 
@@ -560,7 +560,7 @@ def emit_id(value):
 
 
 def emit_arg_list(args):
-    arg, opt_args, opt_comma = unpack_n(args, 3)
+    arg, opt_args, opt_comma = unpack(args, 3)
     if opt_args == '':
         return arg,
     commas, following_args = zip(*opt_args)
@@ -568,7 +568,7 @@ def emit_arg_list(args):
 
 
 def emit_subscript_list(args):
-    subscript, opt_subscripts, opt_comma = unpack_n(args, 3)
+    subscript, opt_subscripts, opt_comma = unpack(args, 3)
     if opt_subscripts == '':
         return subscript
     commas, following_subscripts = zip(*opt_subscripts)
@@ -586,7 +586,7 @@ def emit_starred(args):
 
 
 def emit_nl_indent_one_plus_dedent_suite(args):
-    _, _, list_of_stmts, _ = unpack_n(args, 4)
+    _, _, list_of_stmts, _ = unpack(args, 4)
     stmts = []
     for n in list_of_stmts:
         if isinstance(n, ast.AST):
@@ -625,18 +625,18 @@ def split_args_list_to_arg_kwargs(arg_list):
 
 
 def emit_class_def(args):
-    _, cls_name, opt_args, _, body = unpack_n(args, 5)
+    _, cls_name, opt_args, _, body = unpack(args, 5)
     if opt_args == '':
         bases = ()
         keywords = ()
     else:
-        _, arg_list, _ = unpack_n(opt_args, 3)
+        _, arg_list, _ = unpack(opt_args, 3)
         bases, keywords = split_args_list_to_arg_kwargs(arg_list)
     return ast.ClassDef(cls_name, bases, keywords, body, ())
 
 
 def emit_keyword(args):
-    name, _, value = unpack_n(args, 3)
+    name, _, value = unpack(args, 3)
     if not isinstance(name, ast.Name):
         raise SyntaxError()
     return ast.keyword(name.id, value)
@@ -651,7 +651,7 @@ def emit_arg(args):
 
 
 def emit_comp_for(args):
-    _, expr_list, _, or_test, opt_if_or_for = unpack_n(args, 5)
+    _, expr_list, _, or_test, opt_if_or_for = unpack(args, 5)
     if opt_if_or_for == '':
         opt_if_or_for = None
 
@@ -662,7 +662,7 @@ def emit_comp_for(args):
 
 
 def emit_comp_if(args):
-    _, cond, opt = unpack_n(args, 3)
+    _, cond, opt = unpack(args, 3)
     if opt == '':
         opt = None
 
@@ -697,7 +697,7 @@ def emit_atom_expr(args):
 
 
 def emit_expr_list(args):
-    root_expr, opt_com_del_exprs, opt_trail = unpack_n(args, 3)
+    root_expr, opt_com_del_exprs, opt_trail = unpack(args, 3)
     if opt_com_del_exprs == '':
         return root_expr
 
@@ -718,14 +718,14 @@ def emit_lit(lits):
 
 
 def emit_list_comp(args):
-    _, body, _ = unpack_n(args, 3)
+    _, body, _ = unpack(args, 3)
     if body == '':
         return ast.List(())
     return body
 
 
 def emit_generator_comp(args):
-    _, body, _ = unpack_n(args, 3)
+    _, body, _ = unpack(args, 3)
     if body == '':
         return ast.Tuple(())
 
@@ -741,7 +741,7 @@ def emit_generator_comp(args):
 
 
 def emit_trailer_call(args):
-    _, body, _ = unpack_n(args, 3)
+    _, body, _ = unpack(args, 3)
     if body == '':
         arguments, keywords = (), ()
     else:
@@ -750,7 +750,7 @@ def emit_trailer_call(args):
 
 
 def emit_trailer_subscript(args):
-    _, all_subscripts, _ = unpack_n(args, 3)
+    _, all_subscripts, _ = unpack(args, 3)
     return ast.Subscript(None, all_subscripts)
 
 
@@ -812,7 +812,7 @@ def emit_test_list_comp(args):
 
 
 def emit_dict_comp(args):
-    _, body, _ = unpack_n(args, 3)
+    _, body, _ = unpack(args, 3)
     if body == '':
         return ast.Dict((), ())
     return body
@@ -827,7 +827,7 @@ def emit_list_exprs(args):
 
 
 def emit_dict_pair(args):
-    key, _, value = unpack_n(args, 3)
+    key, _, value = unpack(args, 3)
     return ast.keyword(key, value)
 
 
@@ -873,13 +873,13 @@ def emit_decorated(args):
 
 
 def emit_decorator(args):
-    _, name_str, opt_calls, _ = unpack_n(args, 4)
+    _, name_str, opt_calls, _ = unpack(args, 4)
 
     name = ast.Name(name_str)
     if opt_calls == '':
         return name
 
-    _, arg_list, _ = unpack_n(opt_calls, 3)
+    _, arg_list, _ = unpack(opt_calls, 3)
     args, keywords = split_args_list_to_arg_kwargs(arg_list)
     return ast.Call(name, args, keywords)
 
@@ -901,7 +901,7 @@ def emit_alias(args):
 
 
 def emit_slice(args):
-    lower, _, upper, opt_slice_op = unpack_n(args, 4)
+    lower, _, upper, opt_slice_op = unpack(args, 4)
     if lower == '':
         lower = None
 

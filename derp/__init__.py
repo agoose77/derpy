@@ -8,4 +8,4 @@ from .parsers import lit, cat, alt, opt, star, plus, parse, rec, red, empty_stri
 from .token import Token
 from .tokenizer import Tokenizer
 from .grammar import Grammar
-from .utilities import unpack_n, rflatten
+from .utilities import unpack, flatten, extracts, extract, partial

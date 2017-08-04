@@ -14,6 +14,7 @@ class {name}(parent):
     def __init__(self{init_args}):
         self._hash = hash({hash})
         {init_body}
+        
     def __hash__(self):
         return self._hash
 
@@ -22,6 +23,10 @@ class {name}(parent):
 
     def __eq__(self, other):
         return {eq}
+    
+    @classmethod
+    def from_tuple(cls, t):
+        return cls(*t) 
 
     @classmethod
     def subclass(cls, name, field_str='', module_name=None):

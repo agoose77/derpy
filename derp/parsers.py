@@ -57,8 +57,6 @@ class BaseParserMeta(FieldMeta, ABCMeta):
 
 
 class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
-    def as_string(self):
-        return self.__class__.__name__
 
     @abstractmethod
     def derive(self, token):
@@ -285,8 +283,7 @@ class Reduce(FixedPoint, fields='parser func'):
             def combination(token):
                 return outer(inner(token))
 
-            combination.__name__ = f"{outer.__name__}({inner.__name__})"
-
+            combination.__qualname__ = f"{inner} >> {outer})"
             return self.__class__(sub_reduction.parser, combination)
 
         else:
@@ -300,8 +297,6 @@ class Reduce(FixedPoint, fields='parser func'):
 
 
 class Literal(BaseParser, fields='string'):
-    def as_string(self):
-        return f"Ter({self.string})"
 
     def derive(self, token):
         return Epsilon.from_value(token.second) if token.first == self.string else empty_parser
@@ -330,7 +325,8 @@ def plus(parser):
 
     recurrence = Recurrence()
     recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence),
-                                                       red_repeat))  # recurrence = ~(parser & recurrence)
+                                                       red_repeat)
+                                  )  # recurrence = ~(parser & recurrence)
     return recurrence
 
 

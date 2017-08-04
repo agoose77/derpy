@@ -1,5 +1,5 @@
 from collections import namedtuple
-from functools import wraps
+from functools import wraps, partial as _partial
 
 TextContext = namedtuple("TextContext", "seen depth max_depth")
 
@@ -37,7 +37,7 @@ def to_text_helper(func):
     return recursion_guard_text(limited_depth_text(func))
 
 
-def rflatten(seq, first=True):
+def flatten(seq, first=True):
     """Recursively flatten nested tuples into flat list
 
     (x, (y, z)) defines last ordering,
@@ -56,7 +56,7 @@ def rflatten(seq, first=True):
         yield x
 
 
-def unpack_n(seq, n, first=True):
+def unpack(seq, n, first=True):
     """Flatten N nested tuples into flat list
 
     (x, (y, z)) defines last ordering,
@@ -68,12 +68,35 @@ def unpack_n(seq, n, first=True):
     elif n > 1:
         if first:
             seq, x = seq
-            yield from unpack_n(seq, n - 1, True)
+            yield from unpack(seq, n - 1, True)
             yield x
 
         else:
             x, seq = seq
             yield x
-            yield from unpack_n(seq, n - 1, False)
+            yield from unpack(seq, n - 1, False)
     else:
         yield seq
+
+
+def extracts(n, *indices, first=True):
+    """Reduction to extract given args from parser"""
+    def wrapper(args):
+        all_args = tuple(unpack(args, n, first))
+        return tuple(all_args[i] for i in indices)
+    return wrapper
+
+
+def extract(n, index, first=True):
+    """Reduction to extract given arg from parser"""
+    def wrapper(args):
+        all_args = tuple(unpack(args, n, first))
+        return all_args[index]
+    return wrapper
+
+
+def partial(f, n, *indices, first=True):
+    extractor = extracts(n, *indices, first)
+    def wrapper(args):
+        return f(*extractor(args))
+    return wrapper
