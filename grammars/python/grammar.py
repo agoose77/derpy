@@ -1,6 +1,6 @@
 from collections import deque
 
-from derp import Grammar, lit, star, unpack
+from derp import Grammar, lit, star, unpack, plus
 from derp.ast import iter_fields
 from grammars.python import ast
 

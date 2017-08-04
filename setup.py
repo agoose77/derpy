@@ -103,10 +103,8 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'generate_ebnf=grammars.tools.generate_ebnf:main',
-            'generate_funnel=grammars.tools.generate_funnel:main',
-            'parse_funnel=grammars.tools.run_funnel:main',
-            'parse_python=grammars.tools.run_python:main'
+            'ebnf_to_parser=grammars.tools.generate_ebnf:main',
+            'python_to_ast=grammars.tools.run_python:main'
         ]
     },
 )
