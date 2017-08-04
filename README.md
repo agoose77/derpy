@@ -21,7 +21,7 @@ s.parser = ~(lit('1') & s)
 
 This parser could parse any number of ones, before terminating.
 ```python
-from derp import Token
+from derp import Token, parse
 parse(s, [Token('1', 1) for i in range(5)])
 >> {(1, (1, (1, (1, (1, '')))))}
 ```
@@ -30,21 +30,22 @@ parse(s, [Token('1', 1) for i in range(5)])
 ## Operator notation
 Operator overloading (+, >>, ~, &, |) makes the process of writing a grammar less verbose and simpler to read.
 
-`P` represents a parser (e.g `s` in the above example)
-* `+P` Regex *, 0 or more
-* `~P` Optional
-* `P >> f` Reduction (call f with result of parser)
-* `|` Alternative (logical or)
-* `&` Concatenate (logical and)
+`p` represents a parser (e.g `s` in the above example)
+* `+p` Regex *, 0 or more
+* `~p` Optional
+* `p >> f` Reduction (call f with result of parser)
+* `p | q` Alternative (logical or)
+* `p & q` Concatenate (logical and)
 
 ## Helpers
-* `plus(P)` returns a tuple of 1+ matches of P
-* `star(P)` functional name for `+P` (repeat)
-* `opt(P)` functional name for `~P` (optional)
+* `plus(p)` returns a tuple of 1+ matches of P
+* `star(p)` functional name for `+P` (repeat)
+* `opt(p)` functional name for `~P` (optional)
 * `ter(c)` returns parser to match a token with the first attribute string equal to c.
-* `seq(l, r)` returns Concatenation parser of left and right. 
-* `alt(l, r)` returns Alternate parser of left and right. 
+* `seq(p, q)` returns Concatenation parser of left and right. 
+* `alt(p, q)` returns Alternate parser of left and right. 
 * `rec()` returns a Recurrence parser (with `.parser` attribute to set recurrent parser)
+* `red(p, f)` returns a Reduction parser mapping result of parser `p` to result of `f(p)`
 
 ## Python Grammar Parsing
 A Python parser example can be found in the `grammrs.python` module.
