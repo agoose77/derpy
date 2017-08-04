@@ -77,8 +77,8 @@ def emit_comment(comment):
 
 e = Grammar('EBNF')
 
-e.alt = (e.cat & +(lit('|') & e.cat)) >> emit_alt_parser
-e.cat = (e.star & +e.star) >> emit_concat_parser
+e.alt = (e.cat & (lit('|') & e.cat)[...]) >> emit_alt_parser
+e.cat = (e.star & e.star[...]) >> emit_concat_parser
 e.star = (e.plus & ~lit('*')) >> emit_star
 e.plus = (e.element & ~lit('+')) >> emit_plus
 
@@ -89,6 +89,6 @@ e.element = lit('ID') >> emit_id | e.grouped | e.optional | lit('LIT') >> emit_l
 
 e.rule = (lit('ID') & lit(':') & e.alt & lit('\n')) >> emit_definition
 e.comment = lit('COMMENT') >> emit_comment
-e.grammar = (+(e.rule | lit('\n') | e.comment) & lit('ENDMARKER')) >> emit_grammar_parser
+e.grammar = ((e.rule | lit('\n') | e.comment)[...] & lit('ENDMARKER')) >> emit_grammar_parser
 
 e.ensure_parsers_defined()

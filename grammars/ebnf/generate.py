@@ -1,6 +1,7 @@
 __all__ = "ParserGenerator",
 
 from derp.ast import NodeVisitor
+from .ast import CompoundParser
 
 
 class ParserGenerator(NodeVisitor):
@@ -41,8 +42,10 @@ from derp.parsers import lit, star
             return "{}.{}".format(self.variable, node.name)
 
     def visit_OptParser(self, node):
-        child_text = self.visit(node.child) # TODO check composite / reduction here, remove brackets
-        return "~({})".format(child_text)
+        child_text = self.visit(node.child)
+        if isinstance(node, CompoundParser):
+            return "~({})".format(child_text)
+        return "~{}".format(child_text)
 
     def visit_GroupParser(self, node):
         child_text = self.visit(node.child)
@@ -70,8 +73,15 @@ from derp.parsers import lit, star
 
     def visit_ManyParser(self, node):
         parser = self.visit(node.child)
-        return "star({})".format(parser)
+
+        if isinstance(node, CompoundParser):
+            return "({})[...]".format(parser)
+        return "{}[...]".format(parser)
 
     def visit_OnePlusParser(self, node):
         parser = self.visit(node.child)
-        return "plus({})".format(parser)
+
+        if isinstance(node, CompoundParser):
+            return "({})[1:]".format(parser)
+        return "{}[1:]".format(parser)
+

@@ -1,8 +1,9 @@
 from derp.ast import AST
 
 Grammar = AST.subclass("Grammar", "rules")
-ConcatParser = AST.subclass("ConcatParser", "left right")
-AltParser = AST.subclass("AltParser", "left right")
+CompoundParser = AST.subclass("Compound", "left right")
+ConcatParser = CompoundParser.subclass("ConcatParser")
+AltParser = CompoundParser.subclass("AltParser")
 Comment = AST.subclass("Comment", "string")
 RuleReference = AST.subclass("RuleReference", "name")
 LitParser = AST.subclass("LitParser", "lit")
