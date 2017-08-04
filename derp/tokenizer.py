@@ -18,13 +18,13 @@ class Tokenizer:
     Patterns priority ordered highest to lowest.
     """
     NO_MATCH_NAME: str = "NO_MATCH"
-    OP_CHARACTERS: str = "+/-*^%!~@.<>&|"
+    OP_CHARACTERS: str = "+/-*^%!~@.<>&|="
     PAREN_CHARACTERS: str = "()[]{}"
 
     keywords: frozenset = frozenset()
     patterns: Tuple[Tuple[str, str], ...] = (
         ('NUMBER', r'\d+(\.\d*)?'),
-        ('LIT', r"'([^']+)'"),
+        ('LIT', r"('([^']+)')|(\"([^\"]+)\")"),
         ('ID', r"[a-zA-Z_][a-zA-Z0-9_]*"),
         ('OP', r"|".join(escape(c) for c in OP_CHARACTERS)),
         ('PAREN', r"|".join(escape(c) for c in PAREN_CHARACTERS)),
