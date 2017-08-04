@@ -1,5 +1,7 @@
 import operator
 from argparse import ArgumentParser
+from ast import literal_eval
+
 from typing import Union
 
 from derp import Grammar, lit, parse, Tokenizer, selects, select, context
@@ -12,6 +14,7 @@ Mul = Compound.subclass("Mul")
 Div = Compound.subclass("Div")
 Unary = AST.subclass("Unary", "child")
 Neg = Unary.subclass("Neg")
+ID = Unary.subclass("ID")
 
 g = Grammar("Calc")
 g.sum = (g.product |
@@ -22,7 +25,7 @@ g.product = (g.item |
              (g.product & lit('*') & g.item) >> selects(3, 0, 2) >> Mul.from_tuple |
              (g.product & lit('/') & g.item) >> selects(3, 0, 2) >> Div.from_tuple
              )
-g.item = (lit('NUMBER') |
+g.item = (lit('NUMBER') | lit('ID') >> ID |
           (lit('-') & g.item) >> select(2, 1) >> Neg
           ((lit('(') & g.sum & lit(')')) >> selects(3, 1))
           )
@@ -34,6 +37,9 @@ class EvalVisitor(NodeVisitor):
                   Mul: operator.mul,
                   Div: operator.truediv,
                   Add: operator.add}
+
+    def __init__(self):
+        self.symbol_table = {}
 
     def _visit_or_return(self, value):
         if isinstance(value, AST):
@@ -59,6 +65,15 @@ class EvalVisitor(NodeVisitor):
     visit_Sub = _visit_compound_op
     visit_Div = _visit_compound_op
     visit_Mul = _visit_compound_op
+
+    def visit_ID(self, node):
+        try:
+            return self.symbol_table[node.child]
+        except KeyError:
+            value_str = input(f"Enter value for {node.child}")
+            value = literal_eval(value_str)
+            self.symbol_table[node.child] = value
+            return value
 
 
 def eval_ast(ast: AST) -> Union[int, float]:
