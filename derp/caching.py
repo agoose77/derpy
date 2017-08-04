@@ -1,12 +1,13 @@
-from functools import wraps, update_wrapper
 from contextlib import contextmanager
+from functools import wraps
 
+from typing import Any, Callable
 
 _cache_dict_type = dict
 _root_caches = []
 
 
-def create_cache():
+def create_cache() -> dict:
     memo = _cache_dict_type()
     _root_caches.append(memo)
     return memo
@@ -23,8 +24,7 @@ def context():
     clear_caches()
 
 
-
-def memoized(func):
+def memoized(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """Weakly memoized function accepting 0 non-self args"""
     memo = create_cache()
 
@@ -39,7 +39,7 @@ def memoized(func):
     return wrapper
 
 
-def memoized_n(func):
+def memoized_n(func: Callable) -> Callable:
     """Memoized function accepting self and *args"""
     memo = create_cache()
 
@@ -54,7 +54,7 @@ def memoized_n(func):
     return wrapper
 
 
-def recursive_memoize(func):
+def recursive_memoize(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """Compute the fixed point of a function F accepting no args"""
     memo = create_cache()
 
@@ -70,7 +70,7 @@ def recursive_memoize(func):
     return wrapper
 
 
-def cached_property(func):
+def cached_property(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     memo = create_cache()
 
     @property
@@ -81,4 +81,5 @@ def cached_property(func):
         except KeyError:
             result = memo[self] = func.__get__(self)()
             return result
+
     return wrapper

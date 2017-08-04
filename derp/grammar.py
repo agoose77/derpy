@@ -7,7 +7,7 @@ class Grammar:
     Facilitates use-before-declaration of rules using a Recurrence parser
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         object.__setattr__(self, '_name', name)
         object.__setattr__(self, '_recurrences', {})
         object.__setattr__(self, '_frozen', False)

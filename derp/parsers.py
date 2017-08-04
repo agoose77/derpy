@@ -17,7 +17,7 @@ captures the progress of the parsing process. In other words, taking the derivat
 from abc import ABCMeta, abstractmethod
 from itertools import product
 
-from typing import Iterable, Union, Callable
+from typing import Iterable, Callable
 
 from .caching import cached_property, memoized_n
 from .fields import FieldMeta
@@ -147,7 +147,7 @@ class Alternate(FixedPoint, fields='left right'):
 
 
 class Concatenate(FixedPoint, fields='left right'):
-    def _compact(self, seen :set) -> BaseParser:
+    def _compact(self, seen: set) -> BaseParser:
         if self not in seen:
             seen.add(self)
             self.left = self.left._compact(seen)
@@ -219,12 +219,12 @@ class Epsilon(BaseParser, fields='_trees'):
         return super().__new__(cls)
 
     @classmethod
-    def from_value(cls, value)->'Epsilon':
+    def from_value(cls, value) -> 'Epsilon':
         as_set = frozenset((value,))
         return cls(as_set)
 
     @property
-    def size(self)->int:
+    def size(self) -> int:
         return len(self._trees)
 
     def derive(self, token: Token) -> Empty:
