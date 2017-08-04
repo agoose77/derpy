@@ -3,6 +3,18 @@ A Python implementation of parsing with derivatives. Provides a concise infix no
 
 See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.html for a Java implementation, or http://matt.might.net/articles/parsing-with-derivatives/ for the original author's publication.
 
+## What is parsing?
+According to Wikipedia, parsing is 
+> the formal analysis by a computer of a sentence or other string of words into its constituents, resulting in a parse tree showing their syntactic relation to each other, which may also contain semantic and other information.
+
+Typically, the process of producing a parse tree is separated into two distinct phases; lexing, and parsing.
+Lexing simply breaks down a continuous stream of characters into course, discrete 'tokens'. Parsing then consumes these tokens to build the parse tree. 
+
+This library provides both a simple tokeniser, and the parsing constructs required to build a parse tree from any given input and context free grammar.
+
+## What can this library be use for?
+There are several scenarios in which one might write a lexer/parser. Such scenarios include transpiling between languages, modifying source code (such as decorating all functions starting with the name "funky"), writing a DSL, ...
+
 ## Example parser
 ![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;s&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;s)
 
