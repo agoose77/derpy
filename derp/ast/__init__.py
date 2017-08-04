@@ -1,5 +1,6 @@
 """AST module for ASTs independent of Python AST"""
 from collections import deque
+from inspect import currentframe, getmodule, getframeinfo
 from io import StringIO
 
 _TUPLE_HASH = hash(())
@@ -23,7 +24,9 @@ class {name}(parent):
         return {eq}
 
     @classmethod
-    def subclass(cls, name, field_str='', module_name=__name__):
+    def subclass(cls, name, field_str='', module_name=None):
+        if module_name is None:
+            module_name = _get_caller_caller_module_name()
         return _make_ast_node(name, field_str, cls, module_name)
 {property_body}
 
@@ -38,6 +41,12 @@ _ast_property_stmt = """
 _field_getter_stmt = "{obj}._{name}"
 _field_repr_stmt = "{name}={{!r}}"
 _field_init_stmt = "self._{name} = {name}"
+
+
+def _get_caller_caller_module_name():
+    """Return name of module which calls the function from which this function is invoked"""
+    frame = currentframe().f_back.f_back
+    return getmodule(frame).__name__
 
 
 def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
