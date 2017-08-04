@@ -1,33 +1,15 @@
 import operator
 
 from derp import Grammar, lit, parse, unpack, Tokenizer, extracts, extract
-from derp.ast import AST, NodeVisitor
+from derp.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
 
-Compound = AST.subclass("Compound", "left right", module_name=__name__)
+Compound = AST.subclass("Compound", "left right")
 Add = Compound.subclass("Add")
 Sub = Compound.subclass("Sub")
 Mul = Compound.subclass("Mul")
 Div = Compound.subclass("Div")
 Unary = AST.subclass("Unary", "child")
 Neg = Unary.subclass("Neg")
-
-
-def emit_compound(f, args):
-    l, _, r = unpack(args, 3)
-    return f(l, r)
-
-
-def emit_neg(args):
-    return Neg(args[1])
-
-
-def emit_paren(args):
-    _, x, _ = unpack(args, 3)
-    return x
-
-
-def emit_eqn(args):
-    return args[0]
 
 
 g = Grammar("Calc")
@@ -37,7 +19,7 @@ g.sum = (g.product |
          )
 g.product = (g.item |
              (g.product & lit('*') & g.item) >> extracts(3, 0, 2) >> Mul.from_tuple |
-             (g.product & lit('/') & g.item) >> extracts(3, 0, 2) >> Add.from_tuple
+             (g.product & lit('/') & g.item) >> extracts(3, 0, 2) >> Div.from_tuple
              )
 g.item = (lit('NUMBER') |
           (lit('-') & g.item) >> extract(2, 1) >> Neg
@@ -85,7 +67,7 @@ def eval_ast(ast):
 
 
 if __name__ == "__main__":
-    expr = "99+1"
+    expr = "99+1*6-12/4"
     tokens = Tokenizer().tokenize_text(expr)
 
     from pprint import pprint
@@ -94,5 +76,6 @@ if __name__ == "__main__":
     pprint(tokens)
 
     ast = parse(g.equation, tokens).pop()
+    print(to_string(ast, formatter=cyclic_colour_formatter))
     result = eval_ast(ast)
     print(f"Result of {expr} is {result}")

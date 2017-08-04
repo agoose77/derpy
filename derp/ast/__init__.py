@@ -1,7 +1,9 @@
 """AST module for ASTs independent of Python AST"""
 from collections import deque
-from inspect import currentframe, getmodule, getframeinfo
+from inspect import currentframe, getmodule
 from io import StringIO
+
+from .formatting import cyclic_colour_formatter, Colours, highlight_node_formatter, no_op_formatter
 
 _TUPLE_HASH = hash(())
 
@@ -280,7 +282,7 @@ class NodeTransformer(NodeVisitor):
         return node
 
 
-def to_string(node, format_func=None):
+def to_string(node, formatter=None):
     io = StringIO()
-    write_ast(node, io, format_func=format_func)
+    write_ast(node, io, format_func=formatter)
     return io.getvalue()
