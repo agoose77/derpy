@@ -364,7 +364,7 @@ def least(parser: BaseParser, n: int):
         p = cat(arr(parser, n), star(parser))
         return Reduce(p, reduce_slice)
 
-    return plus(parser)
+    return star(parser)
 
 
 def opt(parser: BaseParser) -> Alternate:
