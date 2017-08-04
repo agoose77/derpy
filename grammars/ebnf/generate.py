@@ -22,8 +22,8 @@ from derp.parsers import lit, star
         statements = []
 
         for rule in node.rules:
-            stmt = self.visit(rule)
-            statements.append(stmt)
+            statement = self.visit(rule)
+            statements.append(statement)
 
         rules = '\n'.join(statements)
         return self.grammar_declaration.format(name=self.name, variable=self.variable, rules=rules, self=self)
@@ -84,4 +84,3 @@ from derp.parsers import lit, star
         if isinstance(node, CompoundParser):
             return "({})[1:]".format(parser)
         return "{}[1:]".format(parser)
-

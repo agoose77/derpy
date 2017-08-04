@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--grammar_filepath', default=default_path, type=Path)
     args = parser.parse_args()
 
-    tokens = list(EBNFTokenizer().tokenize_file(args.grammar_filepath))
+    tokens = list(EBNFTokenizer().tokenize_file(args.grammar_filepath, True))
     print("Parsing EBNF grammar: {} with {} tokens".format(args.grammar_filepath, len(tokens)))
 
     start_time = time.monotonic()

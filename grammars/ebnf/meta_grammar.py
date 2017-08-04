@@ -71,7 +71,8 @@ def emit_lit(lit):
     return ast.LitParser(lit)
 
 
-def emit_comment(comment):
+def emit_comment(args):
+    comment, _ = args
     return ast.Comment(comment)
 
 
@@ -88,7 +89,10 @@ e.grouped = (lit('(') & e.alt & lit(')')) >> emit_group_parser
 e.element = lit('ID') >> emit_id | e.grouped | e.optional | lit('LIT') >> emit_lit
 
 e.rule = (lit('ID') & lit(':') & e.alt & lit('\n')) >> emit_definition
-e.comment = lit('COMMENT') >> emit_comment
-e.grammar = ((e.rule | lit('\n') | e.comment)[...] & lit('ENDMARKER')) >> emit_grammar_parser
+e.comment = (lit('COMMENT') & lit('\n')) >> emit_comment
+
+e.stmt = e.rule | e.comment | lit('\n')
+
+e.grammar = (e.stmt[...] & lit('ENDMARKER')) >> emit_grammar_parser
 
 e.ensure_parsers_defined()

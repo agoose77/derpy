@@ -55,7 +55,10 @@ class Tokenizer:
         indicator_string = ''.join('^' if i == index else ' ' for i, _ in enumerate(line))
         return f"Unable to match character {value!r} on line {context['line_number']}\n{line}\n{indicator_string}"
 
-    def tokenize_text(self, string: str) -> Generator[Token, None, None]:
+    def tokenize_text(self, string: str, force_trailing_newline: bool = False) -> Generator[Token, None, None]:
+        if force_trailing_newline:
+            string += "\n"
+
         context = self.create_context(string)
 
         for match in self.pattern.finditer(string):
@@ -72,9 +75,9 @@ class Tokenizer:
 
         yield Token("ENDMARKER", "ENDMARKER")
 
-    def tokenize_file(self, file_name: str) -> Generator[Token, None, None]:
+    def tokenize_file(self, file_name: str, force_trailing_newline: bool = False) -> Generator[Token, None, None]:
         with open(file_name) as f:
-            yield from self.tokenize_text(f.read())
+            yield from self.tokenize_text(f.read(), force_trailing_newline)
 
     def handle_OP(self, match: MatchType, value, context: dict) -> Token:
         return Token(value, value)
