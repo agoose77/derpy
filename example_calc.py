@@ -69,9 +69,11 @@ class EvalVisitor(NodeVisitor):
     def visit_ID(self, node):
         try:
             return self.symbol_table[node.child]
+
         except KeyError:
             value_str = input(f"Enter value for {node.child}")
             value = literal_eval(value_str)
+            assert isinstance(value, (int, float))
             self.symbol_table[node.child] = value
             return value
 
