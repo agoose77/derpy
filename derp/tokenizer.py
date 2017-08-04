@@ -12,6 +12,11 @@ MatchType = type(re_compile('.').match(' '))
 
 
 class Tokenizer:
+    """Basic REGEX matching tokenizer / lexer. Similar API to AST NodeVisitor, define/overload handle_XXX methods 
+    corresponding to pattern names in the patterns table.
+    
+    Patterns priority ordered highest to lowest.
+    """
     NO_MATCH_NAME: str = "NO_MATCH"
     OP_CHARACTERS: str = "+/-*^%!~@.<>&|"
     PAREN_CHARACTERS: str = "()[]{}"
@@ -29,7 +34,7 @@ class Tokenizer:
     default_pattern: Tuple[str, str] = (NO_MATCH_NAME, r'.')
 
     def __init__(self):
-        self.pattern = self.create_pattern()
+        self.pattern: PatternType = self.create_pattern()
 
     def create_pattern(self) -> PatternType:
         patterns = self.patterns + (self.default_pattern,)
