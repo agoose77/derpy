@@ -12,8 +12,8 @@ Lexing simply breaks down a continuous stream of characters into course, discret
 
 This library provides both a simple tokeniser, and the parsing constructs required to build a parse tree from any given input and context free grammar.
 
-## What can this library be use for?
-There are several scenarios in which one might write a lexer/parser. Such scenarios include transpiling between languages, modifying source code (such as decorating all functions starting with the name "funky"), writing a DSL, ...
+## What can this library be used for?
+There are several scenarios in which one might write a lexer/parser. Such scenarios include transpiling between languages, modifying source code (such as decorating all functions starting with the name "funky"), writing a DSL ...
 
 ## Example parser
 ![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;s&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;s)
