@@ -240,7 +240,8 @@ class Epsilon(BaseParser, fields='_trees'):
 
     @classmethod
     def from_value(cls, value):
-        return cls({value})
+        as_set = frozenset((value,))
+        return cls(as_set)
 
     @property
     def size(self):

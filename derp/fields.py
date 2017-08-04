@@ -25,11 +25,11 @@ class FieldMeta(type):
     def __new__(metacls, name, bases, cls_dict, fields=None):
         if fields:
             field_names = tuple(fields.split())
-            for name in field_names:
-                if not name.isidentifier():
-                    raise ValueError(f"Field name {name!r} is not a valid identifier")
-                if iskeyword(name):
-                    raise ValueError(f"Field name {name!r} is an existing Python keyword")
+            for n in field_names:
+                if not n.isidentifier():
+                    raise ValueError(f"Field name {n!r} is not a valid identifier")
+                if iskeyword(n):
+                    raise ValueError(f"Field name {n!r} is an existing Python keyword")
 
             arg_list = ", ".join(field_names)
             assignment_body = "\n    ".join((_field_assignment_stmt.format(n) for n in field_names))
