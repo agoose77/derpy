@@ -28,31 +28,6 @@ parse(s, [Token('1', 1) for i in range(5)])
 ```
 
 
-## Operator notation
-Operator overloading (infix / prefix operators `>>`, `~`, `&`, `|`, and getitem `[...]`) makes the process of writing a grammar less verbose, and simpler to read.
-
-`p` represents a parser (e.g `s` in the above example)
-* `p[...]` Analogous to the regex Kleene star `*` (0 or more)
-* `p[1:]` Analogous to the regex Kleene plus `+` (1 or more)
-* `p[n]` Array of `p` of length `n`
-* `p[n:]` Variable length array of `p` of minimum length `n`
-* `~p` Optional
-* `p >> f` Reduction (call f with result of parser)
-* `p | q` Alternative (logical or)
-* `p & q` Concatenate (logical and)
-
-## Helpers
-* `plus(p)` returns a tuple of 1+ matches of `p`
-* `star(p)` returns a tuple of 0+ matches of `p`
-* `opt(p)` functional name for `~p` (optional)
-* `lit(c)` returns parser to match a token with the first attribute string equal to c.
-* `seq(p, q)` returns Concatenation parser of left and right. 
-* `alt(p, q)` returns Alternate parser of left and right. 
-* `rec()` returns a Recurrence parser (with `.parser` attribute to set recurrent parser)
-* `red(p, f)` returns a Reduction parser mapping result of parser `p` to result of `f(p)`
-* `least(p, n)` returns a bounded Kleene star parser of minimum length `n`
-* `arr(p, n)` returns an array of `p` of length `n`
-
 ## Python Grammar Parsing
 A Python parser example can be found in the `grammrs.python` module.
 It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar. Alternatively, the EBNF parser can be used to produce a Python grammar parser.
