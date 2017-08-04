@@ -1,5 +1,5 @@
 import operator
-
+from argparse import ArgumentParser
 from typing import Union
 
 from derp import Grammar, lit, parse, Tokenizer, selects, select, context
@@ -68,13 +68,12 @@ def eval_ast(ast: AST) -> Union[int, float]:
 
 
 if __name__ == "__main__":
-    expr = "99+1*6-12/4"
+    parser = ArgumentParser()
+    parser.add_argument("expression", type=str)
+    args = parser.parse_args()
+
+    expr = args.expression
     tokens = Tokenizer().tokenize_text(expr)
-
-    from pprint import pprint
-
-    tokens = list(tokens)
-    pprint(tokens)
 
     with context():
         ast = next(iter(parse(g.equation, tokens)))

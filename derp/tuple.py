@@ -2,7 +2,7 @@ from typing import Any, Callable, Iterable, Tuple
 
 
 def selects(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], tuple]:
-    """Build wrapper which returns selected arguments"""
+    """Build wrapper which selects particular arguments from parse tree"""
 
     def wrapper(args):
         all_args = tuple(unpack(args, n, first))
@@ -12,7 +12,7 @@ def selects(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], 
 
 
 def select(n: int, index: int, first=True) -> Callable[[tuple], Any]:
-    """Build wrapper which returns selected argument"""
+    """Build wrapper which returns particular arguments from parse tree"""
 
     def wrapper(args):
         all_args = tuple(unpack(args, n, first))
@@ -22,7 +22,7 @@ def select(n: int, index: int, first=True) -> Callable[[tuple], Any]:
 
 
 def flattens(seq: Iterable, n: int, first=True) -> Callable[[tuple], Any]:
-    """Build wrapper which flattens nested tuples into 1d tuple"""
+    """Build wrapper which flattens from parse tree tuples into 1d tuple"""
 
     def wrapper(args):
         all_args = tuple(unpack(args, n, first))
@@ -32,7 +32,7 @@ def flattens(seq: Iterable, n: int, first=True) -> Callable[[tuple], Any]:
 
 
 def partial(f, n, *indices, first=True) -> Callable[[tuple], Any]:
-    """Build wrapper which returns result of f(...) with selected arguments"""
+    """Build wrapper which returns result of f(...) with selected arguments from parse tree"""
     extractor = selects(n, *indices, first)
 
     def wrapper(args):
