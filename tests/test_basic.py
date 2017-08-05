@@ -1,6 +1,6 @@
 import unittest
 
-from derp import lit, Token, rec, parse, flatten
+from derp import lit, Token, rec, parse, unpack
 
 
 class TestBasic(unittest.TestCase):
@@ -9,11 +9,12 @@ class TestBasic(unittest.TestCase):
         parser.parser = ~(parser & lit('1'))
 
         tokens = [Token('1', '1') for i in range(10)]
-        result = parse(parser, tokens)
+        parse_trees = parse(parser, tokens)
+        self.assertTrue(parse_trees)
 
-        self.assert_(result)
-        tuple_ = next(iter(result))
-        flattened = tuple(flatten(tuple_))
+        tuple_ = next(iter(parse_trees))
+        # When unpacking, account for trailing '' from the optional parser
+        flattened = tuple(unpack(tuple_, 10 + 1))
         self.assertEqual(len(flattened), 10 + 1)
 
 

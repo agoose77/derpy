@@ -21,7 +21,7 @@ expected_tokens =(
     Token('LIT', '"bob"'),
     Token('NEWLINE', '\n'),
     Token('ENDMARKER', 'ENDMARKER'),
-    )
+)
 
 class TestTokenizer(unittest.TestCase):
     def test_tokenizer(self):

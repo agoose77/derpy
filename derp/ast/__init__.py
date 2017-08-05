@@ -134,7 +134,6 @@ def write_ast(node: AST, io: TextIOBase, level=0, indent='  ', format_func=None)
     if format_func:
         def write(text):
             io.write(format_func(node, level, text))
-
     else:
         write = io.write
 
@@ -142,7 +141,7 @@ def write_ast(node: AST, io: TextIOBase, level=0, indent='  ', format_func=None)
 
     root_margin = indent * level
     level += 1
-    field_margin = level * indent
+    field_margin = indent * level
 
     # if not as_dict:
     write(f"{node.__class__.__name__}(")
@@ -163,8 +162,7 @@ def write_ast(node: AST, io: TextIOBase, level=0, indent='  ', format_func=None)
             elif isinstance(value, tuple) and value:
                 write(f"{field_margin}{name} = (\n")
 
-                level += 1
-                elem_margin = level * indent
+                elem_margin = indent * (level + 1)
 
                 write_trailing_comma = True
                 for j, elem in enumerate(value):
@@ -174,7 +172,7 @@ def write_ast(node: AST, io: TextIOBase, level=0, indent='  ', format_func=None)
 
                     if isinstance(elem, AST):
                         write(elem_margin)
-                        write_ast(elem, io, level, indent, format_func)
+                        write_ast(elem, io, level + 1, indent, format_func)
 
                     else:
                         write(f"{elem_margin}{elem!r}")
