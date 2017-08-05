@@ -1,7 +1,8 @@
 """AST module for ASTs independent of Python AST"""
 from collections import deque
 from inspect import currentframe, getmodule
-from io import StringIO
+from io import StringIO, TextIOBase
+from typing import Any, Generator
 
 from .formatting import cyclic_colour_formatter, Colours, highlight_node_formatter, no_op_formatter
 
@@ -122,27 +123,32 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
 AST = _make_ast_node("AST", field_str="")
 
 
-def write_ast(node, writer, level=0, indent='  ', format_func=None):
+def to_string(node: AST, formatter=None) -> str:
+    io = StringIO()
+    write_ast(node, io, format_func=formatter)
+    return io.getvalue()
+
+
+def write_ast(node: AST, io: TextIOBase, level=0, indent='  ', format_func=None):
     """Write AST node to writable IO object"""
     if format_func:
         def write(text):
-            writer.write(format_func(node, level, text))
+            io.write(format_func(node, level, text))
 
     else:
-        write = writer.write
-
-    root_margin = indent * level
+        write = io.write
 
     as_dict = dict(iter_fields(node))
 
-    field_margin = (level + 1) * indent
+    root_margin = indent * level
+    level += 1
+    field_margin = level * indent
 
-    if not as_dict:
-        write("{}()".format(node.__class__.__name__))
+    # if not as_dict:
+    write(f"{node.__class__.__name__}(")
 
-    else:
-        write("{}(\n".format(node.__class__.__name__))
-
+    if as_dict:
+        write("\n")
         for i, (name, value) in enumerate(as_dict.items()):
             # Between items separate with comma and newline
             if i != 0:
@@ -150,67 +156,57 @@ def write_ast(node, writer, level=0, indent='  ', format_func=None):
 
             # Write AstNode
             if isinstance(value, AST):
-                field_text_left = field_margin + "{} = ".format(name)
-                write(field_text_left)
-                write_ast(value, writer, level + 1, indent, format_func)
+                write(f"{field_margin}{name} = ")
+                write_ast(value, io, level, indent, format_func)
 
             # Write tuple field
-            elif type(value) is tuple:
-                field_text_left = field_margin + "{} = (\n".format(name)
-                write(field_text_left)
+            elif isinstance(value, tuple) and value:
+                write(f"{field_margin}{name} = (\n")
 
-                j = -1
-                elem_margin = (level + 2) * indent
+                level += 1
+                elem_margin = level * indent
+
+                write_trailing_comma = True
                 for j, elem in enumerate(value):
                     if j != 0:
                         write(",\n")
+                        write_trailing_comma = False
 
                     if isinstance(elem, AST):
                         write(elem_margin)
-                        write_ast(elem, writer, level + 2, indent, format_func)
+                        write_ast(elem, io, level, indent, format_func)
 
                     else:
-                        write(elem_margin + repr(elem))
+                        write(f"{elem_margin}{elem!r}")
 
-                if j > -1:
-                    write(",\n")
-                    write(field_margin + ")")
+                if write_trailing_comma:
+                    write(",")
+                write(f"\n{field_margin})")
 
-                else:
-                    write(field_margin + ")")
-
-            # Write repr
+            # Write with generic repr
             else:
-                write(field_margin + "{} = {!r}".format(name, value))
+                write(f"{field_margin}{name} = {value!r}")
 
-        write("\n" + root_margin + ")")
+        write("\n" + root_margin)
+    write(")")
 
 
-def iter_fields(node):
+def iter_fields(node: AST):
     """Return iterator over fields of AST node"""
-    if not isinstance(node, AST):
-        raise TypeError(f"Expected AST node, received {type(node).__name__}")
-
     return ((f, getattr(node, f)) for f in node._fields)
 
 
-def iter_child_nodes(node):
+def iter_child_nodes(node: AST) -> Generator[Any, None, None]:
     """Return iterator over AST-derived fields of AST node"""
-    if not isinstance(node, AST):
-        raise TypeError(f"Expected AST node, received {type(node).__name__}")
-
     for key, value in iter_fields(node):
-
         if isinstance(value, AST):
             yield value
 
         elif isinstance(value, tuple):
-            for item in value:
-                if isinstance(item, AST):
-                    yield item
+            yield from (i for i in value if isinstance(i, AST))
 
 
-def walk(node):
+def walk(node: AST) -> Generator[AST, None, None]:
     """Walk all nodes in AST
 
     :param node: root node
@@ -228,15 +224,15 @@ def walk(node):
 class NodeVisitor:
     """Visit all nodes in AST and call corresponding visitor function"""
 
-    def generic_visit(self, node, *args, **kwargs):
+    def generic_visit(self, node):
         for child in iter_child_nodes(node):
-            self.visit(child, *args, **kwargs)
+            self.visit(child)
         return node
 
-    def visit(self, node, *args, **kwargs):
+    def visit(self, node):
         visitor_name = "visit_{}".format(node.__class__.__name__)
         visitor = getattr(self, visitor_name, self.generic_visit)
-        return visitor(node, *args, **kwargs)
+        return visitor(node)
 
 
 class NodeTransformer(NodeVisitor):
@@ -256,7 +252,7 @@ class NodeTransformer(NodeVisitor):
             new_value.append(item)
         return tuple(new_value)
 
-    def generic_visit(self, node, *args, **kwargs):
+    def generic_visit(self, node):
         has_changed = False
         new_values = []
 
@@ -267,8 +263,7 @@ class NodeTransformer(NodeVisitor):
                 new_value = self._generic_visit_tuple(value)
 
             elif isinstance(value, AST):
-                new_value = self.visit(value, *args
-                                       , **kwargs)
+                new_value = self.visit(value)
                 assert isinstance(new_value, AST) or new_value is None
 
             if new_value != value:
@@ -280,9 +275,3 @@ class NodeTransformer(NodeVisitor):
             return node.__class__(*new_values)
 
         return node
-
-
-def to_string(node, formatter=None):
-    io = StringIO()
-    write_ast(node, io, format_func=formatter)
-    return io.getvalue()

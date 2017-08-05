@@ -71,6 +71,20 @@ def to_source(node, indent_with=' ' * 4, add_line_information=False):
     return ''.join(generator.result)
 
 
+
+
+def _sequence_visitor(left, right):
+    def visit(self, node):
+        self.write(left)
+        for idx, item in enumerate(node.elts):
+            if idx:
+                self.write(', ')
+            self.visit(item)
+        self.write(right)
+
+    return visit
+
+
 class SourceGenerator(NodeVisitor):
     """This visitor is able to transform a well formed syntax tree into python
     sourcecode.  For more details have a look at the docstring of the
@@ -412,20 +426,8 @@ class SourceGenerator(NodeVisitor):
             self.visit(item)
         self.write(idx and ')' or ',)')
 
-    def sequence_visit(left, right):
-        def visit(self, node):
-            self.write(left)
-            for idx, item in enumerate(node.elts):
-                if idx:
-                    self.write(', ')
-                self.visit(item)
-            self.write(right)
-
-        return visit
-
-    visit_List = sequence_visit('[', ']')
-    visit_Set = sequence_visit('{', '}')
-    del sequence_visit
+    visit_List = _sequence_visitor('[', ']')
+    visit_Set = _sequence_visitor('{', '}')
 
     def visit_Dict(self, node):
         self.write('{')
