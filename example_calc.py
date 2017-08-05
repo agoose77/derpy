@@ -18,12 +18,12 @@ ID = Unary.subclass("ID")
 
 g = Grammar("Calc")
 g.sum = (g.product |
-         (g.sum & lit('+') & g.product) >> selects(3, 0, 2) >> Add.from_tuple |
-         (g.sum & lit('-') & g.product) >> selects(3, 0, 2) >> Sub.from_tuple
+         (g.sum & lit('+') & g.product) >> selects(3, 0, 2) >> Add._make |
+         (g.sum & lit('-') & g.product) >> selects(3, 0, 2) >> Sub._make
          )
 g.product = (g.item |
-             (g.product & lit('*') & g.item) >> selects(3, 0, 2) >> Mul.from_tuple |
-             (g.product & lit('/') & g.item) >> selects(3, 0, 2) >> Div.from_tuple
+             (g.product & lit('*') & g.item) >> selects(3, 0, 2) >> Mul._make |
+             (g.product & lit('/') & g.item) >> selects(3, 0, 2) >> Div._make
              )
 g.item = (lit('NUMBER') | lit('ID') >> ID |
           (lit('-') & g.item) >> select(2, 1) >> Neg

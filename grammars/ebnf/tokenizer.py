@@ -22,6 +22,8 @@ class EBNFTokenizer(Tokenizer):
         else:
             context['paren_depth'] -= 1
 
+        return Token(value, value)
+
     def handle_NEWLINE(self, match, value, context):
         super().handle_NEWLINE(match, value, context)
 

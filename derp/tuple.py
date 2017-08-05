@@ -1,10 +1,10 @@
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any, Callable, Iterable
 
 
-def selects(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], tuple]:
+def selects(n: int, *indices: int, first=True) -> Callable[[tuple], tuple]:
     """Build wrapper which selects particular arguments from parse tree"""
 
-    def wrapper(args):
+    def wrapper(args: tuple) -> tuple:
         all_args = tuple(unpack(args, n, first))
         return tuple(all_args[i] for i in indices)
 
@@ -14,29 +14,19 @@ def selects(n: int, *indices: Tuple[int, ...], first=True) -> Callable[[tuple], 
 def select(n: int, index: int, first=True) -> Callable[[tuple], Any]:
     """Build wrapper which returns particular arguments from parse tree"""
 
-    def wrapper(args):
+    def wrapper(args: tuple) -> Any:
         all_args = tuple(unpack(args, n, first))
         return all_args[index]
 
     return wrapper
 
 
-def flattens(seq: Iterable, n: int, first=True) -> Callable[[tuple], Any]:
+def flattens(seq: Iterable, n: int, first=True) -> Callable[[tuple], tuple]:
     """Build wrapper which flattens from parse tree tuples into 1d tuple"""
 
-    def wrapper(args):
+    def wrapper(args: tuple) -> tuple:
         all_args = tuple(unpack(args, n, first))
         return all_args
-
-    return wrapper
-
-
-def partial(f, n, *indices, first=True) -> Callable[[tuple], Any]:
-    """Build wrapper which returns result of f(...) with selected arguments from parse tree"""
-    extractor = selects(n, *indices, first)
-
-    def wrapper(args):
-        return f(*extractor(args))
 
     return wrapper
 
@@ -48,7 +38,7 @@ def unpack(seq: Iterable, n: int, first=True) -> tuple:
     ((x, y), z) defines first ordering.
     """
     if n < 1:
-        raise ValueError(n)
+        raise ValueError("Cannot unpack sequence of length 0")
 
     elif n > 1:
         if first:

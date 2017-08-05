@@ -27,8 +27,8 @@ class {name}(parent):
         return {eq}
     
     @classmethod
-    def from_tuple(cls, t):
-        return cls(*t) 
+    def _make(cls, iterable):
+        return cls(*iterable) 
 
     @classmethod
     def subclass(cls, name, field_str='', module_name=None):

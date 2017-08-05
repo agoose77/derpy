@@ -1,4 +1,4 @@
-from derp import Grammar, lit, unpack
+from derp import Grammar, lit, unpack, selects, select
 from grammars.ebnf import ast
 
 
@@ -6,16 +6,6 @@ def emit_grammar_parser(args):
     any_rules_or_nl, end_marker = args
     rules = tuple([r for r in any_rules_or_nl if r != '\n'])
     return ast.Grammar(rules)
-
-
-def emit_lit_parser(text):
-    return ast.LitParser(text)
-
-
-def emit_opt_parser(args):
-    _, child, _ = unpack(args, 3)
-    return ast.OptParser(child)
-
 
 def emit_star(args):
     elem, plus = args
@@ -29,21 +19,6 @@ def emit_plus(args):
     if plus:
         return ast.OnePlusParser(elem)
     return elem
-
-
-def emit_group_parser(args):
-    _, child, _ = unpack(args, 3)
-    return ast.GroupParser(child)
-
-
-def emit_definition(args):
-    name, _, child, _ = unpack(args, 4)
-    return ast.RuleDefinition(name, child)
-
-
-def emit_file(args):
-    lines, _ = args
-    return ast.Grammar(tuple(l for l in lines if not l == '\n'))
 
 
 def emit_alt_parser(args):
@@ -63,19 +38,6 @@ def emit_concat_parser(args):
     return node
 
 
-def emit_id(id_):
-    return ast.ID(id_)
-
-
-def emit_lit(lit):
-    return ast.LitParser(lit)
-
-
-def emit_comment(args):
-    comment, _ = args
-    return ast.Comment(comment)
-
-
 e = Grammar('EBNF')
 
 e.alt = (e.cat & (lit('|') & e.cat)[...]) >> emit_alt_parser
@@ -83,13 +45,16 @@ e.cat = (e.star & e.star[...]) >> emit_concat_parser
 e.star = (e.plus & ~lit('*')) >> emit_star
 e.plus = (e.element & ~lit('+')) >> emit_plus
 
-e.optional = (lit('[') & e.alt & lit(']')) >> emit_opt_parser
-e.grouped = (lit('(') & e.alt & lit(')')) >> emit_group_parser
+e.optional = (lit('[') & e.alt & lit(']')) >> select(3, 1) >> ast.OptParser
+e.grouped = (lit('(') & e.alt & lit(')')) >> select(3, 1) >> ast.GroupParser
 
-e.element = lit('ID') >> emit_id | e.grouped | e.optional | lit('LIT') >> emit_lit
+e.element = (lit('ID') >> ast.ID |
+             lit('LIT') >> ast.LitParser |
+             e.grouped |
+             e.optional)
 
-e.rule = (lit('ID') & lit(':') & e.alt & lit('\n')) >> emit_definition
-e.comment = (lit('COMMENT') & lit('\n')) >> emit_comment
+e.rule = (lit('ID') & lit(':') & e.alt & lit('\n')) >> selects(4, 0, 2) >> ast.RuleDefinition._make
+e.comment = (lit('COMMENT') & lit('\n')) >> select(2, 0) >> ast.Comment
 
 e.stmt = e.rule | e.comment | lit('\n')
 

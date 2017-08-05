@@ -42,7 +42,7 @@ from derp import Grammar, lit
 
     def visit_OptParser(self, node):
         child_text = self.visit(node.child)
-        if isinstance(node, CompoundParser):
+        if isinstance(node.child, CompoundParser):
             return "~({})".format(child_text)
         return "~{}".format(child_text)
 
@@ -72,14 +72,13 @@ from derp import Grammar, lit
 
     def visit_ManyParser(self, node):
         parser = self.visit(node.child)
-
-        if isinstance(node, CompoundParser):
+        if isinstance(node.child, CompoundParser):
             return "({})[...]".format(parser)
         return "{}[...]".format(parser)
 
     def visit_OnePlusParser(self, node):
         parser = self.visit(node.child)
 
-        if isinstance(node, CompoundParser):
+        if isinstance(node.child, CompoundParser):
             return "({})[1:]".format(parser)
         return "{}[1:]".format(parser)
