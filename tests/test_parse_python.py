@@ -1,12 +1,7 @@
-from derp import parse, Token
-from derp.ast import to_string, NodeTransformer
-from grammars.python import p, tokenize_text, ast
 from unittest import TestCase, main
 
-
-tokens = tokenize_text("x = x + 1")
-parse_trees = parse(p.file_input, tokens)
-module = next(iter(parse_trees))
+from derp import parse, Token
+from grammars.python import p, tokenize_text, ast
 
 test_string = "x = x + 1"
 
@@ -37,7 +32,6 @@ expected_tokens = (
 
 
 class TestParsePython(TestCase):
-
     def test_tokens(self):
         tokens = tuple(tokenize_text(test_string))
 
