@@ -49,10 +49,10 @@ def make_tokens(string):
 class TestBasic(unittest.TestCase):
     def test_basic(self):
         tokens = make_tokens("(1*3)/4")
-        result = parse(g.expr, tokens)
-        self.assert_(result)
+        parse_trees = parse(g.expr, tokens)
+        self.assertEqual(len(parse_trees), 1)
 
-        tuple_ast = next(iter(result))
+        tuple_ast = next(iter(parse_trees))
         self.assertEqual(tuple_ast, ("expr", ("mult", ("mult", 1, 3), 4)))
 
 

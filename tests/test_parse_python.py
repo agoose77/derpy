@@ -51,9 +51,6 @@ class TestParsePython(TestCase):
         module = next(iter(parse_trees))
 
         self.assertEqual(module, expected_ast)
-        print()
-        print(to_string(module))
-        print(to_string(expected_ast))
 
 
 if __name__ == "__main__":
