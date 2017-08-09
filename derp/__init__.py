@@ -3,7 +3,6 @@ A Python implementation of parsing with derivatives. Provides a concise infix no
 
 See http://maniagnosis.crsr.net/2012/04/parsing-with-derivatives-introduction.html for a Java implementation, or http://matt.might.net/articles/parsing-with-derivatives/ for the original author's publication.
 """
-from . import ast
 from .caching import context
 from .grammar import Grammar
 from .parsers import arr, lit, least, cat, alt, opt, star, plus, parse, rec, red, empty_string, empty_parser

@@ -1,4 +1,4 @@
 from . import ast
 from .codegen import to_source
-from .tokenizer import tokenize_file, tokenize_text
+from .tokenizer import PythonTokenizer
 from .grammar import p
