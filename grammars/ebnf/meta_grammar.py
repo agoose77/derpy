@@ -60,4 +60,4 @@ e.stmt = e.rule | e.comment | lit('\n')
 
 e.grammar = (e.stmt[...] & lit('ENDMARKER')) >> emit_grammar_parser
 
-e.ensure_parsers_defined()
+e.freeze()

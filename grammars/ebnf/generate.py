@@ -10,7 +10,7 @@ from derp import Grammar, lit
 
 {variable} = Grammar({name!r})
 {rules}
-{variable}.ensure_parsers_defined()
+{variable}.freeze()
 """
 
     def __init__(self, name, variable='g'):

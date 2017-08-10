@@ -12,13 +12,26 @@ class Grammar:
         object.__setattr__(self, '_recurrences', {})
         object.__setattr__(self, '_frozen', False)
 
-    def ensure_parsers_defined(self):
-        """Check all parsers are defined"""
+    def validate(self):
         for name, parser in self._recurrences.items():
             if parser.parser is None:
                 raise ValueError(f"{name} parser is not defined")
 
+    def freeze(self):
+        """Check all parsers are defined"""
+        self.validate()
         object.__setattr__(self, '_frozen', True)
+
+    def extend(self, name: str) -> 'Grammar':
+        self.validate()
+
+        grammar = self.__class__(name)
+
+        for name, value in vars(self).items():
+            if isinstance(value, BaseParser):
+                setattr(grammar, name, value)
+
+        return grammar
 
     def __getattr__(self, name):
         if self._frozen:

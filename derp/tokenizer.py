@@ -19,7 +19,7 @@ class BaseTokenizer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def tokenize_file(self, filepath: PathLike) -> Iterable[Token]:
+    def tokenize_file(self, file_path: PathLike) -> Iterable[Token]:
         raise NotImplementedError
 
 
@@ -112,6 +112,6 @@ class RegexTokenizer(BaseTokenizer):
 
         yield Token("ENDMARKER", "ENDMARKER")
 
-    def tokenize_file(self, file_name: str, force_trailing_newline: bool = False) -> Iterable[Token]:
-        with open(file_name) as f:
+    def tokenize_file(self, file_path: str, force_trailing_newline: bool = False) -> Iterable[Token]:
+        with open(file_path) as f:
             yield from self.tokenize_text(f.read(), force_trailing_newline)

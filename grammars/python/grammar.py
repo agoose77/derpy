@@ -1080,4 +1080,4 @@ p.yield_expr = (lit('yield') & ~p.yield_arg) >> emit_yield_expr
 p.yield_arg = (lit('from') & p.test) | p.test_list
 
 # Check all parsers were defined
-p.ensure_parsers_defined()
+p.freeze()

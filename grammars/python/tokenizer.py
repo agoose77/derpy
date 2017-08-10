@@ -19,12 +19,12 @@ class PythonTokenizer(BaseTokenizer):
         return self.tokenize_readline(string_io.readline)
 
 
-    def tokenize_file(self, filename: PathLike) -> Iterable[Token]:
-        with open(filename) as f:
+    def tokenize_file(self, file_path: PathLike) -> Iterable[Token]:
+        with open(file_path) as f:
             string_io = StringIO(f.read() + '\n')
         return self.tokenize_readline(string_io.readline)
 
-    def tokenize_readline(self, readline: Callable[[]]) -> Iterable[Token]:
+    def tokenize_readline(self, readline: Callable[[], str]) -> Iterable[Token]:
         for tok_info in generate_tokens(readline):
             if tok_info.type == token.NAME:
                 value = tok_info.string
