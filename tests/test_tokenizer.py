@@ -1,6 +1,6 @@
 import unittest
 
-from derp import Tokenizer, Token
+from derp import RegexTokenizer, Token
 
 test_string = """
 x = y + z
@@ -25,7 +25,7 @@ expected_tokens = (
 
 class TestTokenizer(unittest.TestCase):
     def test_tokenizer(self):
-        tokenizer = Tokenizer()
+        tokenizer = RegexTokenizer()
         tokens = tuple(tokenizer.tokenize_text(test_string))
         self.assertTupleEqual(tokens, expected_tokens)
 

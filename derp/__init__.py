@@ -7,5 +7,5 @@ from .caching import context
 from .grammar import Grammar
 from .parsers import arr, lit, least, cat, alt, opt, star, plus, parse, rec, red, empty_string, empty_parser
 from .token import Token
-from .tokenizer import Tokenizer
+from .tokenizer import BaseTokenizer, RegexTokenizer
 from .tuple import unpack, flattens, selects, select

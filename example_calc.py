@@ -4,7 +4,7 @@ from ast import literal_eval
 
 from typing import Union
 
-from derp import Grammar, lit, parse, Tokenizer, selects, select, context
+from derp import Grammar, lit, parse, RegexTokenizer, selects, select, context
 from derp.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
 
 Compound = AST.subclass("Compound", "left right")
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     expr = args.expression
-    tokens = Tokenizer().tokenize_text(expr)
+    tokens = RegexTokenizer().tokenize_text(expr)
 
     with context():
         ast = next(iter(parse(g.equation, tokens)))

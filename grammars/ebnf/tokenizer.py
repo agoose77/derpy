@@ -1,9 +1,9 @@
-from derp.tokenizer import Tokenizer, Token
+from derp.tokenizer import RegexTokenizer, Token
 
 
-class EBNFTokenizer(Tokenizer):
+class EBNFTokenizer(RegexTokenizer):
 
-    patterns = Tokenizer.patterns + (
+    patterns = RegexTokenizer.patterns + (
         ("COMMENT", r'#[^\n]*'),
         ("COLON", r':')
     )

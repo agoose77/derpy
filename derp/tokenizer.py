@@ -4,14 +4,26 @@ FLOAT_REGEX = r"((^[0-9])|(^[1-9][0-9]*))\.[0-9]+$"
 INT_REGEX = r"^[1-9][0-9]*$"
 
 from ast import literal_eval
+from abc import ABC, abstractmethod
 from re import compile as re_compile, escape
-from typing import Generator, Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Iterable
+from os import PathLike
 
 PatternType = type(re_compile('.'))
 MatchType = type(re_compile('.').match(' '))
 
 
-class Tokenizer:
+class BaseTokenizer(ABC):
+    @abstractmethod
+    def tokenize_text(self, text: str) -> Iterable[Token]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def tokenize_file(self, filepath: PathLike) -> Iterable[Token]:
+        raise NotImplementedError
+
+
+class RegexTokenizer(BaseTokenizer):
     """Basic REGEX matching tokenizer / lexer. Similar API to AST NodeVisitor, define/overload handle_XXX methods 
     corresponding to pattern names in the patterns table.
     
@@ -55,30 +67,6 @@ class Tokenizer:
         indicator_string = ''.join('^' if i == index else ' ' for i, _ in enumerate(line))
         return f"Unable to match character {value!r} on line {context['line_number']}\n{line}\n{indicator_string}"
 
-    def tokenize_text(self, string: str, force_trailing_newline: bool = False) -> Generator[Token, None, None]:
-        if force_trailing_newline:
-            string += "\n"
-
-        context = self.create_context(string)
-
-        for match in self.pattern.finditer(string):
-            kind = match.lastgroup
-            value = match.group(kind)
-
-            if kind == self.NO_MATCH_NAME:
-                raise ValueError(self.get_error_string(match, value, context))
-
-            handler = getattr(self, f"handle_{kind}", self.default_handler)
-            result = handler(match, value, context)
-            if result is not None:
-                yield result
-
-        yield Token("ENDMARKER", "ENDMARKER")
-
-    def tokenize_file(self, file_name: str, force_trailing_newline: bool = False) -> Generator[Token, None, None]:
-        with open(file_name) as f:
-            yield from self.tokenize_text(f.read(), force_trailing_newline)
-
     def handle_OP(self, match: MatchType, value, context: dict) -> Token:
         return Token(value, value)
 
@@ -103,3 +91,27 @@ class Tokenizer:
 
     def handle_NUMBER(self, match: MatchType, value, context: dict) -> Token:
         return Token("NUMBER", literal_eval(value))
+
+    def tokenize_text(self, string: str, force_trailing_newline: bool = False) -> Iterable[Token]:
+        if force_trailing_newline:
+            string += "\n"
+
+        context = self.create_context(string)
+
+        for match in self.pattern.finditer(string):
+            kind = match.lastgroup
+            value = match.group(kind)
+
+            if kind == self.NO_MATCH_NAME:
+                raise ValueError(self.get_error_string(match, value, context))
+
+            handler = getattr(self, f"handle_{kind}", self.default_handler)
+            result = handler(match, value, context)
+            if result is not None:
+                yield result
+
+        yield Token("ENDMARKER", "ENDMARKER")
+
+    def tokenize_file(self, file_name: str, force_trailing_newline: bool = False) -> Iterable[Token]:
+        with open(file_name) as f:
+            yield from self.tokenize_text(f.read(), force_trailing_newline)

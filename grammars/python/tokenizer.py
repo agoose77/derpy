@@ -5,26 +5,27 @@ from keyword import iskeyword
 from tokenize import generate_tokens
 
 from ast import literal_eval
-from derp import Token
+from derp import Token, BaseTokenizer
+
+from typing import Iterable, Callable
+from os import PathLike
 
 
-class PythonTokenizer:
+class PythonTokenizer(BaseTokenizer):
 
 
-    def tokenize_text(self, source):
+    def tokenize_text(self, source: str) -> Iterable[Token]:
         string_io = StringIO(source + '\n')
         return self.tokenize_readline(string_io.readline)
 
 
-    def tokenize_file(self, filename):
+    def tokenize_file(self, filename: PathLike) -> Iterable[Token]:
         with open(filename) as f:
             string_io = StringIO(f.read() + '\n')
         return self.tokenize_readline(string_io.readline)
 
-
-    def tokenize_readline(self, readline):
+    def tokenize_readline(self, readline: Callable[[]]) -> Iterable[Token]:
         for tok_info in generate_tokens(readline):
-
             if tok_info.type == token.NAME:
                 value = tok_info.string
                 if iskeyword(value):
