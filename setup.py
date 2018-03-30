@@ -18,14 +18,7 @@ here = Path(__file__).parent
 readme_path = here / 'README.md'
 
 
-def find_packages_in_namespace(namespace):
-    """Find packages in a namespace package
-    :param namespace: name of namespace package
-    """
-    return [f"{namespace}.{p}" for p in find_packages(namespace)]
-
-
-packages = [n for p in ('derp', 'grammars') for n in find_packages_in_namespace(p)]
+packages = find_packages()
 package_data = {}
 
 setup(
