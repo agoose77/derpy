@@ -1,7 +1,7 @@
 """A setuptools based setup module.
 
 See:
-https://packaging.python.org/en/latest/distributing.html
+https://packaging.python36.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 
@@ -97,7 +97,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ebnf_to_parser=derpy.grammars.tools.generate_ebnf:main',
-            'python_to_ast=derpy.grammars.tools.run_python:main'
+            'python36_to_ast=derpy.grammars.tools.parse_python_36:main'
         ]
     },
 )

@@ -2,7 +2,7 @@ from collections import deque
 
 from ... import Grammar, lit, star, unpack, plus
 from ...ast import iter_fields
-from ..python import ast
+from ..python36 import ast
 
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).

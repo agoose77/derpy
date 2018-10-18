@@ -33,6 +33,8 @@ class PythonTokenizer(BaseTokenizer):
                     yield Token('ID', tok_info.string)
 
             elif tok_info.type == token.STRING:
+                print('NODE', type(__import__("ast").parse(tok_info.string, mode='eval')), repr(tok_info.string))
+
                 yield Token('LIT', literal_eval(tok_info.string))
 
             elif tok_info.type == token.NUMBER:

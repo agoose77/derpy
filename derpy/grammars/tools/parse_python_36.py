@@ -4,11 +4,11 @@ from time import time
 
 from derpy.ast import to_string
 from derpy import parse
-from derpy.grammars.python import p, PythonTokenizer
+from derpy.grammars.python36 import p, PythonTokenizer
 
 
 def main():
-    parser = ArgumentParser(description='Python parser')
+    parser = ArgumentParser(description='Python 3.6 parser')
     parser.add_argument('filepath', type=Path)
     parser.add_argument('-w', '--write-file', action='store_true')
     args = parser.parse_args()
@@ -22,10 +22,10 @@ def main():
     finish_time = time()
 
     if not result:
-        print("Failed to parse Python source")
+        print("Failed to parse Python3.6 source")
 
     elif len(result) > 1:
-        print("Ambiguous parse of Python source, mutliple parse trees")
+        print("Ambiguous parse of Python3.6 source, mutliple parse trees")
 
     else:
         print("Parsed in {:.3f}s".format(finish_time - start_time))
