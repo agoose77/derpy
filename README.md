@@ -15,6 +15,10 @@ This library provides both a simple tokeniser, and the parsing constructs requir
 ## What can this library be used for?
 There are several scenarios in which one might write a lexer/parser. Such scenarios include transpiling between languages, modifying source code (such as decorating all functions starting with the name "funky"), writing a DSL ...
 
+## Installation
+For now, there is no package on PyPI, so you must use the Git link:
+`pip install git+https://github.com/agoose77/derpy.git#egg=derpy`
+
 ## Example parser
 ![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;s&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;s)
 
