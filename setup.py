@@ -22,7 +22,7 @@ packages = find_packages()
 package_data = {}
 
 setup(
-    name='py_cfg_parsing',
+    name='derpy',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
@@ -33,7 +33,7 @@ setup(
     long_description=readme_path.read_text(encoding='utf-8'),
 
     # The project's main homepage.
-    url='https://github.com/agoose77/py_cfg_parsing',
+    url='https://github.com/agoose77/derpy',
 
     # Author details
     author='Angus Hollands',
