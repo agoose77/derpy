@@ -1,5 +1,5 @@
 from enum import Enum
-from derp.ast import AST
+from derpy.ast import AST
 
 # Modules ##################################################
 mod = AST.subclass('mod')

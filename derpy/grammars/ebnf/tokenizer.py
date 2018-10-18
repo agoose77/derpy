@@ -1,4 +1,4 @@
-from derp.tokenizer import RegexTokenizer, Token
+from derpy.tokenizer import RegexTokenizer, Token
 
 
 class EBNFTokenizer(RegexTokenizer):

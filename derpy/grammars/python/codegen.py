@@ -7,8 +7,8 @@
     :copyright: Copyright 2008 by Armin Ronacher.
     :license: BSD.
 """
-from derp.ast import *
-from grammars.python.ast import *
+from derpy.ast import *
+from ..python.ast import *
 
 BINOP_SYMBOLS = {}
 BINOP_SYMBOLS[Add] = '+'

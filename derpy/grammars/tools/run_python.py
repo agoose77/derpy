@@ -2,9 +2,9 @@ from argparse import ArgumentParser
 from pathlib import Path
 from time import time
 
-from derp.ast import write_ast
-from derp import parse
-from grammars.python import p, tokenize_file
+from derpy.ast import write_ast
+from derpy import parse
+from derpy.grammars.python import p, tokenize_file
 
 
 def main():

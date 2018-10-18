@@ -1,6 +1,6 @@
 import unittest
 
-from derp import Grammar, Token, parse, lit, alt, unpack
+from derpy import Grammar, Token, parse, lit, alt, unpack
 
 
 def apply(op, seq):

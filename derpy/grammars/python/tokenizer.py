@@ -5,7 +5,7 @@ from keyword import iskeyword
 from tokenize import generate_tokens
 
 from ast import literal_eval
-from derp import Token, BaseTokenizer
+from derpy import Token, BaseTokenizer
 
 from typing import Iterable, Callable
 from os import PathLike

@@ -1,8 +1,8 @@
 from collections import deque
 
-from derp import Grammar, lit, star, unpack, plus
-from derp.ast import iter_fields
-from grammars.python import ast
+from ... import Grammar, lit, star, unpack, plus
+from ...ast import iter_fields
+from ..python import ast
 
 
 # TODO parsing currently permits invalid assignments to literals. Should look into assignment contexts (or at least parsing the assignment node).
@@ -939,8 +939,8 @@ def generate_args_list(tfpdef):
     tfpdef_opt_ass = tfpdef & ~(lit('=') & p.test)
     tfpdef_kwargs = lit('**') & tfpdef
     return ((tfpdef_opt_ass & star(lit(',') & tfpdef_opt_ass) & ~(lit(',') & ~(
-        (lit('*') & ~tfpdef & star(lit(',') & tfpdef_opt_ass) & ~(
-            lit(',') & tfpdef_kwargs)) | tfpdef_kwargs))) >> emit_first |
+            (lit('*') & ~tfpdef & star(lit(',') & tfpdef_opt_ass) & ~(
+                    lit(',') & tfpdef_kwargs)) | tfpdef_kwargs))) >> emit_first |
             (lit('*') & ~tfpdef & star(lit(',') & tfpdef_opt_ass) & ~(lit(',') & tfpdef_kwargs)) >> emit_varargs |
             tfpdef_kwargs >> emit_kwargs_only)
 
@@ -958,7 +958,7 @@ p.stmt = p.simple_stmt | p.compound_stmt
 p.simple_stmt = (p.small_stmt & star(lit(';') & p.small_stmt) & ~lit(';') & lit(
     'NEWLINE')) >> emit_simple_stmt  # Single line multistmts emit tuple, others emit ast nodes
 p.small_stmt = (
-    p.expr_stmt | p.del_stmt | p.pass_stmt | p.flow_stmt | p.import_stmt | p.global_stmt | p.nonlocal_stmt | p.assert_stmt)
+        p.expr_stmt | p.del_stmt | p.pass_stmt | p.flow_stmt | p.import_stmt | p.global_stmt | p.nonlocal_stmt | p.assert_stmt)
 p.expr_stmt = (p.test_list_star_expr & p.augassign & (p.yield_expr | p.test_list)) >> emit_expr_augassign | \
               (p.test_list_star_expr & star(lit('=') & (p.yield_expr | p.test_list_star_expr))) >> emit_expr_assigns
 p.test_list_star_expr = ((p.test | p.star_expr) & star(lit(',') & (p.test | p.star_expr)) & ~lit(
@@ -980,7 +980,8 @@ p.import_from = (lit('from') &
                  ((star(lit('.') | lit('...')) & p.dotted_name) >> emit_import_from_dotted_name | plus(
                      lit('.') | lit('...')) >> emit_import_from_no_name)
                  & lit('import') & (lit('*') >> emit_import_from_all | (
-    lit('(') & p.import_as_names & lit(')')) >> emit_import_from_names_paren | p.import_as_names)) >> emit_import_from
+                lit('(') & p.import_as_names & lit(
+            ')')) >> emit_import_from_names_paren | p.import_as_names)) >> emit_import_from
 
 # from & ((ALT & import)), aLT)
 p.import_as_name = (lit('ID') & ~(lit('as') & lit('ID'))) >> emit_alias
@@ -995,10 +996,10 @@ p.assert_stmt = (lit('assert') & p.test & ~(lit(',') & p.test)) >> emit_assert
 
 p.compound_stmt = p.if_stmt | p.while_stmt | p.for_stmt | p.try_stmt | p.with_stmt | p.func_def | p.class_def | p.decorated
 p.if_stmt = (lit('if') & p.test & lit(':') & p.suite & star(lit('elif') & p.test & lit(':') & p.suite) & ~(
-    lit('else') & lit(':') & p.suite)) >> emit_if
+        lit('else') & lit(':') & p.suite)) >> emit_if
 p.while_stmt = (lit('while') & p.test & lit(':') & p.suite & ~(lit('else') & lit(':') & p.suite)) >> emit_while
 p.for_stmt = (lit('for') & p.expr_list & lit('in') & p.test_list & lit(':') & p.suite & ~(
-    lit('else') & lit(':') & p.suite)) >> emit_for
+        lit('else') & lit(':') & p.suite)) >> emit_for
 p.try_stmt = (lit('try') & lit(':') & p.suite &
               ((plus(p.except_clause & lit(':') & p.suite) &
                 ~(lit('else') & lit(':') & p.suite) &
@@ -1058,11 +1059,13 @@ p.expr_list = ((p.expr | p.star_expr) & star(lit(',') & (p.expr | p.star_expr)) 
 p.test_list = (p.test & star(lit(',') & p.test) & ~lit(',')) >> emit_test_list
 
 p.dict_or_set_maker = (
-    (((p.test & lit(':') & p.test) >> emit_dict_pair | (lit('**') & p.expr) >> emit_dict_kwargs) & (p.comp_for | (
-        star(lit(',') & ((p.test & lit(':') & p.test) >> emit_dict_pair | (lit('**') & p.expr) >> emit_dict_kwargs))
-        & ~lit(',')))) >> emit_dict_maker | ((p.test | p.star_expr) &
-                                             (p.comp_for | (star(lit(',') & (p.test | p.star_expr)) & ~lit(','))))
-    >> emit_set_maker
+        (((p.test & lit(':') & p.test) >> emit_dict_pair | (lit('**') & p.expr) >> emit_dict_kwargs) & (p.comp_for | (
+                star(lit(',') & (
+                            (p.test & lit(':') & p.test) >> emit_dict_pair | (lit('**') & p.expr) >> emit_dict_kwargs))
+                & ~lit(',')))) >> emit_dict_maker | ((p.test | p.star_expr) &
+                                                     (p.comp_for | (
+                                                                 star(lit(',') & (p.test | p.star_expr)) & ~lit(','))))
+        >> emit_set_maker
 )
 
 p.argument = ((p.test & ~p.comp_for) >> emit_arg |

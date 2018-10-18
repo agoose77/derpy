@@ -20,7 +20,7 @@ There are several scenarios in which one might write a lexer/parser. Such scenar
 
 This parser would be represented as 
 ```python
-from derp import rec, lit, empty_string
+from derpy import rec, lit, empty_string
 s = rec()
 s.parser = empty_string | (lit('1') & s)
 ```
@@ -33,7 +33,7 @@ s.parser = ~(lit('1') & s)
 
 This parser could parse any number of ones, before terminating.
 ```python
-from derp import Token, parse
+from derpy import Token, parse
 
 parse(s, [Token('1', 1) for i in range(5)])
 >> {(1, (1, (1, (1, (1, '')))))}
@@ -41,11 +41,11 @@ parse(s, [Token('1', 1) for i in range(5)])
 
 
 ## Python Grammar Parsing
-A Python parser example can be found in the `grammrs.python` module.
+A Python parser example can be found in the `derpy.grammars.python` module.
 It may not entirely be correct; small errors in the grammar may exist due to a hasty translation from the Python 3 official grammar. Alternatively, the EBNF parser can be used to produce a Python grammar parser.
 
-Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested with an existing ast-to-code utility, simply by replacing the import to ast with our own).
+Most of the lines of code are devoted to outputting a useful AST (but for around 1200 loc, it's still quite compact). A custom `derpy.ast` module is defined to allow a similar API to the built-in ast module (In fact, the ast output was tested with an existing ast-to-code utility, simply by replacing the import to ast with our own).
 
 ## [Py]EBNF Grammar Meta Parsing
-An example of parsing the Python EBNF grammar, to produce the source for a Python parser, can be found in the `grammars.ebnf`
+An example of parsing the Python EBNF grammar, to produce the source for a Python parser, can be found in the `derpy.grammars.ebnf`
 To make this usable as an AST generator requires some formatting of each rule (using a reduction), which can be done by using custom reduction rules on the output of the generator. The produced Python grammar can be compared against the hand-rolled one in `python`

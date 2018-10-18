@@ -1,5 +1,5 @@
-from derp import Grammar, lit, unpack, selects, select
-from grammars.ebnf import ast
+from ... import Grammar, lit, unpack, selects, select
+from . import ast
 
 
 def emit_grammar_parser(args):

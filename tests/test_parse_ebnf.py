@@ -1,7 +1,7 @@
 from unittest import TestCase, main
 
-from derp import parse, Token
-from grammars.ebnf import e, EBNFTokenizer, ast
+from derpy import parse, Token
+from derpy.grammars.ebnf import e, EBNFTokenizer, ast
 
 test_string = """dog: (NAME 'barked')+ 'woof'*"""
 

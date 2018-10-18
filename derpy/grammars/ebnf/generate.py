@@ -1,12 +1,12 @@
 __all__ = "ParserGenerator",
 
-from derp.ast import NodeVisitor
+from derpy.ast import NodeVisitor
 from .ast import CompoundParser
 
 
 class ParserGenerator(NodeVisitor):
     grammar_declaration = """
-from derp import Grammar, lit
+from derpy import Grammar, lit
 
 {variable} = Grammar({name!r})
 {rules}

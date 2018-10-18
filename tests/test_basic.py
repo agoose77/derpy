@@ -1,6 +1,6 @@
 import unittest
 
-from derp import lit, Token, rec, parse, unpack
+from derpy import lit, Token, rec, parse, unpack
 
 
 class TestBasic(unittest.TestCase):

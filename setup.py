@@ -20,7 +20,7 @@ readme_path = here / 'README.md'
 
 packages = find_packages()
 package_data = {}
-
+print("Packages", packages)
 setup(
     name='derpy',
 
@@ -96,8 +96,8 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'ebnf_to_parser=grammars.tools.generate_ebnf:main',
-            'python_to_ast=grammars.tools.run_python:main'
+            'ebnf_to_parser=derpy.grammars.tools.generate_ebnf:main',
+            'python_to_ast=derpy.grammars.tools.run_python:main'
         ]
     },
 )

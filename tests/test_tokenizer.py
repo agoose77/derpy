@@ -1,6 +1,6 @@
 import unittest
 
-from derp import RegexTokenizer, Token
+from derpy import RegexTokenizer, Token
 
 test_string = """
 x = y + z

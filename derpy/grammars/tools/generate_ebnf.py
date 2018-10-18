@@ -3,9 +3,9 @@ import time
 from argparse import ArgumentParser
 from pathlib import Path
 
-from derp.ast import to_string
-from derp import parse
-from grammars.ebnf import ParserGenerator, e, EBNFTokenizer
+from ...ast import to_string
+from ... import parse
+from ..ebnf import ParserGenerator, e, EBNFTokenizer
 
 default_path = Path(__file__).parent / "sample.ebnf"
 
@@ -29,7 +29,7 @@ def main():
         print("Ambiguous parse of EBNF, mutliple parse trees")
 
     else:
-        print("Successfully parsed EBNF in {:.3f}s".format(finish_time-start_time))
+        print("Successfully parsed EBNF in {:.3f}s".format(finish_time - start_time))
         root = next(iter(result))
         print("==========Built AST============")
         print(to_string(root))

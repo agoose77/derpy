@@ -1,4 +1,4 @@
-from derp.ast import AST
+from derpy.ast import AST
 
 Grammar = AST.subclass("Grammar", "rules")
 CompoundParser = AST.subclass("Compound", "left right")

@@ -1,7 +1,7 @@
 from unittest import TestCase, main
 
-from derp import parse, Token
-from grammars.python import p, PythonTokenizer, ast
+from derpy import parse, Token
+from derpy.grammars.python import p, PythonTokenizer, ast
 
 test_string = "x = x + 1"
 

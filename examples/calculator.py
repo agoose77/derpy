@@ -4,8 +4,8 @@ from ast import literal_eval
 
 from typing import Union
 
-from derp import Grammar, lit, parse, RegexTokenizer, selects, select, context
-from derp.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
+from derpy import Grammar, lit, parse, RegexTokenizer, selects, select, context
+from derpy.ast import AST, NodeVisitor, to_string, cyclic_colour_formatter
 
 Compound = AST.subclass("Compound", "left right")
 Add = Compound.subclass("Add")
@@ -41,7 +41,7 @@ class EvalVisitor(NodeVisitor):
     def __init__(self):
         self.symbol_table = {}
 
-    def _visit_or_return(self, value):
+    def _visit_and_return(self, value):
         if isinstance(value, AST):
             return self.visit(value)
         return value
@@ -54,17 +54,17 @@ class EvalVisitor(NodeVisitor):
         except KeyError:
             raise ValueError
 
-        left = self._visit_or_return(node.left)
-        right = self._visit_or_return(node.right)
+        left = self._visit_and_return(node.left)
+        right = self._visit_and_return(node.right)
         return op(left, right)
-
-    def visit_Neg(self, node):
-        return -self._visit_or_return(node.child)
 
     visit_Add = _visit_compound_op
     visit_Sub = _visit_compound_op
     visit_Div = _visit_compound_op
     visit_Mul = _visit_compound_op
+
+    def visit_Neg(self, node):
+        return -self._visit_and_return(node.child)
 
     def visit_ID(self, node):
         try:
