@@ -17,6 +17,7 @@ There are several scenarios in which one might write a lexer/parser. Such scenar
 
 ## Installation
 For now, there is no package on PyPI, so you must use the Git link:
+
 `pip install git+https://github.com/agoose77/derpy.git#egg=derpy`
 
 ## Example parser
