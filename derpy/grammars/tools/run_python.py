@@ -2,17 +2,19 @@ from argparse import ArgumentParser
 from pathlib import Path
 from time import time
 
-from derpy.ast import write_ast
+from derpy.ast import to_string
 from derpy import parse
-from derpy.grammars.python import p, tokenize_file
+from derpy.grammars.python import p, PythonTokenizer
 
 
 def main():
     parser = ArgumentParser(description='Python parser')
     parser.add_argument('filepath', type=Path)
+    parser.add_argument('-w', '--write-file', action='store_true')
     args = parser.parse_args()
 
-    tokens = list(tokenize_file(args.filepath))
+    tokeniser = PythonTokenizer()
+    tokens = list(tokeniser.tokenize_file(args.filepath))
     print("Parsing: {} with {} tokens".format(args.filepath, len(tokens)))
 
     start_time = time()
@@ -29,10 +31,14 @@ def main():
         print("Parsed in {:.3f}s".format(finish_time - start_time))
 
         module = next(iter(result))
-        output_filename = args.filepath.parent / "{}.ast".format(args.filepath.name)
+        ast_string = to_string(module)
 
-        with open(output_filename, 'w') as f:
-            write_ast(module, f)
+        output_path = args.filepath.parent / "{}.ast".format(args.filepath.name)
+
+        if args.write_file:
+            output_path.write_text(ast_string)
+        else:
+            print(ast_string)
 
 
 if __name__ == "__main__":

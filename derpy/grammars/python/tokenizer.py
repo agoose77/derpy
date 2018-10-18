@@ -13,11 +13,9 @@ from os import PathLike
 
 class PythonTokenizer(BaseTokenizer):
 
-
     def tokenize_text(self, source: str) -> Iterable[Token]:
         string_io = StringIO(source + '\n')
         return self.tokenize_readline(string_io.readline)
-
 
     def tokenize_file(self, file_path: PathLike) -> Iterable[Token]:
         with open(file_path) as f:
