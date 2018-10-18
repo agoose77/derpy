@@ -53,4 +53,4 @@ Most of the lines of code are devoted to outputting a useful AST (but for around
 
 ## [Py]EBNF Grammar Meta Parsing
 An example of parsing the Python EBNF grammar, to produce the source for a Python parser, can be found in the `derpy.grammars.ebnf`
-To make this usable as an AST generator requires some formatting of each rule (using a reduction), which can be done by using custom reduction rules on the output of the generator. The produced Python grammar can be compared against the hand-rolled one in `python`
+To make this usable as an AST generator requires some formatting of each rule (using a reduction), which can be done by using custom reduction rules on the output of the generator. The produced Python grammar can be compared against the hand-rolled one in `python36`
