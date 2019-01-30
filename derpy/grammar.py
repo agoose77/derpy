@@ -37,8 +37,10 @@ class Grammar:
         if self._frozen:
             raise AttributeError(f"Frozen grammar has no rule {name!r}")
 
+        # __getattr__ only called if parser doesn't exist, so this is a forward-reference (use recurrence)
         recurrence = self._recurrences[name] = Recurrence()
-        object.__setattr__(self, name, recurrence)  # Assign recurrence to attribute
+        # Assign recurrence to attribute
+        object.__setattr__(self, name, recurrence)
         return recurrence
 
     def __setattr__(self, name, value):

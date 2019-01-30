@@ -3,8 +3,11 @@ from collections import deque
 from inspect import currentframe, getmodule
 from io import StringIO, TextIOBase
 from typing import Any, Generator
+from os import environ
 
 from .formatting import cyclic_colour_formatter, Colours, highlight_node_formatter, no_op_formatter
+
+ENV_VAR_NO_SLOTS = "DERPY_AST_NO_SLOTS"
 
 _TUPLE_HASH = hash(())
 
@@ -12,7 +15,7 @@ _ast_declaration = """
 class {name}(parent):
 
     _fields = ({fields})
-    __slots__ = '_hash', {slots}
+    {slots_body}
 
     def __init__(self{init_args}):
         self._hash = hash({hash})
@@ -57,7 +60,7 @@ def _get_caller_caller_module_name():
     return getmodule(frame).__name__
 
 
-def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
+def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__, define_slots=True):
     """AST constructor
 
     :param name: name of AST class
@@ -107,8 +110,9 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
     else:
         eq_string = "self.__class__ == other.__class__"
 
+    slots_body = f"__slots__ = '_hash', {underscore_field_names_string}" if define_slots else ""
     class_body = _ast_declaration.format(name=name, base=parent_cls, fields=field_names_string_trailer,
-                                         slots=underscore_field_names_string, init_args=init_args, init_body=init_body,
+                                         slots_body=slots_body, init_args=init_args, init_body=init_body,
                                          hash=hash_string, repr=repr_string, property_body=property_body, eq=eq_string)
 
     local_dict = {'parent': parent_cls}
@@ -120,7 +124,7 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__):
     return local_dict[name]
 
 
-AST = _make_ast_node("AST", field_str="")
+AST = _make_ast_node("AST", field_str="", define_slots=ENV_VAR_NO_SLOTS not in environ)
 
 
 def to_string(node: AST, formatter=None) -> str:

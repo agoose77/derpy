@@ -20,14 +20,14 @@ readme_path = here / 'README.md'
 
 packages = find_packages()
 package_data = {}
-print("Packages", packages)
+
 setup(
     name='derpy',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.0.1',
+    version='0.0.2',
 
     description='Parsing with Derivatives',
     long_description=readme_path.read_text(encoding='utf-8'),
@@ -84,12 +84,14 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
+        'python': ["astor"]
     },
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data=package_data,
+    python_requires='>=3.6',
 
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow

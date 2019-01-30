@@ -1,14 +1,19 @@
 from enum import Enum
+from derpy import ast
 from derpy.ast import AST
+from types import ModuleType
+from contextlib import contextmanager
+import sys
+
 
 # Modules ##################################################
-mod = AST.subclass('mod')
+mod = ast.AST.subclass('mod')
 Module = mod.subclass('Module', 'body')
 Interactive = mod.subclass('Interactive', 'body')
 Expression = mod.subclass('Expression', 'body')
 
 ### Statements ##############################################
-stmt = AST.subclass('stmt')
+stmt = ast.AST.subclass('stmt')
 ClassDef = stmt.subclass('ClassDef', 'name bases keywords body decorator_list')
 FunctionDef = stmt.subclass('FunctionDef', 'name args body decorator_list returns')
 Return = stmt.subclass('Return', 'value')
@@ -38,7 +43,7 @@ Continue = stmt.subclass('Continue', '')
 #############################################################
 
 ### Expressions #############################################
-expr = AST.subclass('expr')
+expr = ast.AST.subclass('expr')
 BoolOp = expr.subclass('BoolOp', 'op values')
 BinOp = expr.subclass('BinOp', 'left op right')
 UnaryOp = expr.subclass('UnaryOp', 'op operand')
@@ -136,3 +141,29 @@ importfrommodule = AST.subclass('importfrommodule', 'level module')
 importfromsubmodules = AST.subclass('importfromsubmodules', 'aliases')
 tryexceptelsefinally = AST.subclass('tryexceptelsefinally', 'handlers orelse finalbody')
 tryfinally = AST.subclass('tryfinally', 'finalbody')
+
+
+_patched_ast_module = ModuleType("ast")
+_patched_ast_module.__dict__.update(vars(ast))
+_patched_ast_module.__dict__.update(globals())
+
+
+def patch_ast_module():
+    """Install fake "ast" module into sys.modules, to support libraries which use ast."""
+    sys.modules['ast'] = _patched_ast_module
+
+
+def unpatch_ast_module(replace_with_builtin=True):
+    ast = sys.modules['ast']
+    assert ast is _patched_ast_module
+    del sys.modules['ast']
+
+    if replace_with_builtin:
+        sys.modules['ast'] = __import__("ast")
+
+
+@contextmanager
+def patched_ast_module(replace_with_builtin=True):
+    patch_ast_module()
+    yield
+    unpatch_ast_module(replace_with_builtin)
