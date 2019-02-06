@@ -20,6 +20,8 @@ For now, there is no package on PyPI, so you must use the Git link:
 
 `pip install git+https://github.com/agoose77/derpy.git#egg=derpy`
 
+Add `[python]` to the line to include the codegen support (astor).
+
 ## Example parser
 ![Parser syntax](https://latex.codecogs.com/png.latex?\dpi{150}&space;\large&space;s&space;=&space;\epsilon&space;|&space;1&space;\cdot&space;s)
 
