@@ -6,7 +6,7 @@ INT_REGEX = r"^[1-9][0-9]*$"
 from ast import literal_eval
 from abc import ABC, abstractmethod
 from re import compile as re_compile, escape
-from typing import Dict, Any, Tuple, Iterable
+from typing import Dict, Any, Tuple, Iterable, FrozenSet
 from os import PathLike
 
 PatternType = type(re_compile('.'))
@@ -33,7 +33,7 @@ class RegexTokenizer(BaseTokenizer):
     OP_CHARACTERS: str = "+/-*^%!~@.<>:&|="
     PAREN_CHARACTERS: str = "()[]{}"
 
-    keywords: frozenset = frozenset()
+    keywords: FrozenSet[str] = frozenset()
     patterns: Tuple[Tuple[str, str], ...] = (
         ('NUMBER', r'(0|[1-9]\d*)(\.\d*)?'),
         ('LIT', r"('([^']+)')|(\"([^\"]+)\")"),
@@ -56,10 +56,10 @@ class RegexTokenizer(BaseTokenizer):
     def create_context(self, string: str) -> Dict[str, Any]:
         return {'line_number': 1, 'char_number': 0, 'string': string}
 
-    def default_handler(self, match: MatchType, value, context: dict) -> Token:
+    def default_handler(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
         return Token(match.lastgroup, value)
 
-    def get_error_string(self, match: MatchType, value, context: dict) -> str:
+    def get_error_string(self, match: MatchType, value, context: Dict[str, Any]) -> str:
         index = match.start() - context['char_number']
         lines = context['string'].splitlines()
         line = lines[context['line_number'] - 1]
@@ -67,12 +67,12 @@ class RegexTokenizer(BaseTokenizer):
         indicator_string = ''.join('^' if i == index else ' ' for i, _ in enumerate(line))
         return f"Unable to match character {value!r} on line {context['line_number']}\n{line}\n{indicator_string}"
 
-    def handle_OP(self, match: MatchType, value, context: dict) -> Token:
+    def handle_OP(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
         return Token(value, value)
 
     handle_PAREN = handle_OP
 
-    def handle_ID(self, match: MatchType, value, context: dict) -> Token:
+    def handle_ID(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
         if value in self.keywords:
             kind = value
         else:
@@ -80,16 +80,16 @@ class RegexTokenizer(BaseTokenizer):
 
         return Token(kind, value)
 
-    def handle_FORMAT(self, match: MatchType, value, context: dict) -> None:
+    def handle_FORMAT(self, match: MatchType, value, context: Dict[str, Any]) -> None:
         pass
 
-    def handle_NEWLINE(self, match: MatchType, value, context: dict) -> Token:
+    def handle_NEWLINE(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
         context['char_number'] = match.end()
         context['line_number'] += 1
 
         return Token("NEWLINE", value)
 
-    def handle_NUMBER(self, match: MatchType, value, context: dict) -> Token:
+    def handle_NUMBER(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
         return Token("NUMBER", literal_eval(value))
 
     def tokenize_text(self, string: str, force_trailing_newline: bool = False) -> Iterable[Token]:
