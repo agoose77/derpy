@@ -24,9 +24,7 @@ class NameCounter(NodeVisitor):
 
 class TestAST(unittest.TestCase):
     def _create_ast(self):
-        body = While(Name("True"), (Print(Name("x")),
-                                    Call(Name("foo")))
-                     ),
+        body = (While(Name("True"), (Print(Name("x")), Call(Name("foo")))),)
         return Module(body)
 
     def test_transformer(self):
@@ -44,5 +42,5 @@ class TestAST(unittest.TestCase):
         self.assertEqual(name_counter.count, 3)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

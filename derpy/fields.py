@@ -1,7 +1,6 @@
 from keyword import iskeyword
 
-_field_init_body = \
-"""
+_field_init_body = """
 def __init__(self, {arg_list}):
     {assignment_body}
 """
@@ -9,8 +8,7 @@ def __init__(self, {arg_list}):
 _field_assignment_stmt = "self.{0} = {0}"
 _repr_getter_stmt = "self.{0}"
 
-_field_repr_body = \
-"""
+_field_repr_body = """
 def __repr__(self):
     return f"{cls_name}({repr_str})"
 """
@@ -40,11 +38,11 @@ class FieldMeta(type):
             field_names = ()
 
         # Repr definition
-        repr_str = ', '.join(f"{n}={{{_repr_getter_stmt.format(n)}!r}}" for n in field_names)
+        repr_str = ", ".join(f"{n}={{{_repr_getter_stmt.format(n)}!r}}" for n in field_names)
         repr_body = _field_repr_body.format(cls_name=name, repr_str=repr_str)
         exec(repr_body, cls_dict)
 
-        cls_dict['__slots__'] = field_names
-        cls_dict['_fields'] = field_names
+        cls_dict["__slots__"] = field_names
+        cls_dict["_fields"] = field_names
 
         return super().__new__(metacls, name, bases, cls_dict)

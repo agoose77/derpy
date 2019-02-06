@@ -11,8 +11,8 @@ default_path = Path(__file__).parent / "sample.ebnf"
 
 
 def main():
-    parser = ArgumentParser(description='EBNF parser generator')
-    parser.add_argument('--grammar_filepath', default=default_path, type=Path)
+    parser = ArgumentParser(description="EBNF parser generator")
+    parser.add_argument("--grammar_filepath", default=default_path, type=Path)
     args = parser.parse_args()
 
     tokens = list(EBNFTokenizer().tokenize_file(args.grammar_filepath, True))
@@ -35,7 +35,7 @@ def main():
         print(to_string(root))
         #
         # Generate parsers from AST
-        generator = ParserGenerator(name='EBNF', variable='e')
+        generator = ParserGenerator(name="EBNF", variable="e")
         grammar = generator.visit(root)
 
         print("==========Built Grammar============")

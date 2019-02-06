@@ -8,9 +8,9 @@ class Grammar:
     """
 
     def __init__(self, name: str):
-        object.__setattr__(self, '_name', name)
-        object.__setattr__(self, '_recurrences', {})
-        object.__setattr__(self, '_frozen', False)
+        object.__setattr__(self, "_name", name)
+        object.__setattr__(self, "_recurrences", {})
+        object.__setattr__(self, "_frozen", False)
 
     def validate(self):
         for name, parser in self._recurrences.items():
@@ -20,9 +20,9 @@ class Grammar:
     def freeze(self):
         """Check all parsers are defined"""
         self.validate()
-        object.__setattr__(self, '_frozen', True)
+        object.__setattr__(self, "_frozen", True)
 
-    def extend(self, name: str) -> 'Grammar':
+    def extend(self, name: str) -> "Grammar":
         self.validate()
 
         grammar = self.__class__(name)
@@ -57,11 +57,11 @@ class Grammar:
 
             except KeyError:
                 # In this case, parser wasn't found in recurrences so must have been explicitly assigned
-                raise ValueError('Parser already assigned')
+                raise ValueError("Parser already assigned")
 
             else:
                 if recurrence.parser is not None:
-                    raise ValueError(f'Recurrent parser {name!r} already defined')
+                    raise ValueError(f"Recurrent parser {name!r} already defined")
 
                 recurrence.parser = value
 

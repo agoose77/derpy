@@ -68,7 +68,7 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__, de
     :param module_name: module name to which class belongs
     """
     if field_str:
-        field_names = tuple(field_str.split(' '))
+        field_names = tuple(field_str.split(" "))
     else:
         field_names = ()
 
@@ -79,8 +79,9 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__, de
         field_names = parent_cls._fields + field_names
 
     # Validation
-    assert len(set(field_names)) == len(field_names), "Duplicate field name given. Check parent class {}" \
-        .format(parent_cls)
+    assert len(set(field_names)) == len(field_names), "Duplicate field name given. Check parent class {}".format(
+        parent_cls
+    )
     assert all(f.isidentifier() for f in field_names), "Non identifier field name given: {}".format(field_names)
 
     underscore_field_names_string = ", ".join((repr("_" + f) for f in field_names))
@@ -88,37 +89,51 @@ def _make_ast_node(name, field_str="", parent_cls=None, module_name=__name__, de
     field_names_string_trailer = (field_names_string + ",") if field_names else ""
 
     field_variables_string = ", ".join(field_names)
-    field_variables_trailer = (", ".join(field_names) + ("," if len(field_names) == 1 else ""))
+    field_variables_trailer = ", ".join(field_names) + ("," if len(field_names) == 1 else "")
 
     init_args = (", " + field_variables_string) if field_names else ""
     init_body = ("\n        ".join(_field_init_stmt.format(name=f) for f in field_names) + "\n") if field_names else ""
     hash_string = "({})".format(field_variables_trailer)
 
     repr_elements = (_field_repr_stmt.format(name=f) for f in field_names)
-    repr_values = [_field_getter_stmt.format(obj='self', name=f) for f in field_names]
-    repr_string = "'{name}({elements})'.format({values})" \
-        .format(name=name, elements=', '.join(repr_elements), values=', '.join(repr_values)) if field_names else \
-        "'{}()'".format(name)
+    repr_values = [_field_getter_stmt.format(obj="self", name=f) for f in field_names]
+    repr_string = (
+        "'{name}({elements})'.format({values})".format(
+            name=name, elements=", ".join(repr_elements), values=", ".join(repr_values)
+        )
+        if field_names
+        else "'{}()'".format(name)
+    )
 
     property_body = "\n".join(_ast_property_stmt.format(name=n) for n in field_names)
 
     if field_names:
-        other_repr_values = (_field_getter_stmt.format(obj='other', name=f) for f in field_names)
-        eq_string = "self.__class__ is other.__class__ and ({}) == ({})".format(", ".join(repr_values),
-                                                                                ", ".join(other_repr_values))
+        other_repr_values = (_field_getter_stmt.format(obj="other", name=f) for f in field_names)
+        eq_string = "self.__class__ is other.__class__ and ({}) == ({})".format(
+            ", ".join(repr_values), ", ".join(other_repr_values)
+        )
 
     else:
         eq_string = "self.__class__ == other.__class__"
 
     slots_body = f"__slots__ = '_hash', {underscore_field_names_string}" if define_slots else ""
-    class_body = _ast_declaration.format(name=name, base=parent_cls, fields=field_names_string_trailer,
-                                         slots_body=slots_body, init_args=init_args, init_body=init_body,
-                                         hash=hash_string, repr=repr_string, property_body=property_body, eq=eq_string)
+    class_body = _ast_declaration.format(
+        name=name,
+        base=parent_cls,
+        fields=field_names_string_trailer,
+        slots_body=slots_body,
+        init_args=init_args,
+        init_body=init_body,
+        hash=hash_string,
+        repr=repr_string,
+        property_body=property_body,
+        eq=eq_string,
+    )
 
-    local_dict = {'parent': parent_cls}
+    local_dict = {"parent": parent_cls}
 
     global_dict = globals().copy()
-    global_dict['__name__'] = module_name
+    global_dict["__name__"] = module_name
 
     exec(class_body, global_dict, local_dict)
     return local_dict[name]
@@ -133,11 +148,13 @@ def to_string(node: AST, formatter=None) -> str:
     return io.getvalue()
 
 
-def write_ast(node: AST, io: TextIOBase, level=0, indent='  ', format_func=None):
+def write_ast(node: AST, io: TextIOBase, level=0, indent="  ", format_func=None):
     """Write AST node to writable IO object"""
     if format_func:
+
         def write(text):
             io.write(format_func(node, level, text))
+
     else:
         write = io.write
 

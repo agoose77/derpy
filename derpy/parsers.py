@@ -24,8 +24,21 @@ from .fields import FieldMeta
 from .token import Token
 from .tuple import unpack
 
-__all__ = ('Alternate', 'Concatenate', 'Recurrence', 'Reduce', 'Literal', 'Token', 'empty_parser',
-           'empty_string', 'plus', 'star', 'opt', 'parse', 'lit')
+__all__ = (
+    "Alternate",
+    "Concatenate",
+    "Recurrence",
+    "Reduce",
+    "Literal",
+    "Token",
+    "empty_parser",
+    "empty_string",
+    "plus",
+    "star",
+    "opt",
+    "parse",
+    "lit",
+)
 
 
 class OperatorMixin:
@@ -34,13 +47,13 @@ class OperatorMixin:
     As parsers may operate upon their own types, these methods are defined later.
     """
 
-    def __and__(self, other) -> 'Concatenate':
+    def __and__(self, other) -> "Concatenate":
         return cat(self, other)
 
-    def __or__(self, other) -> 'Alternate':
+    def __or__(self, other) -> "Alternate":
         return alt(self, other)
 
-    def __getitem__(self, item) ->  'BaseParser':
+    def __getitem__(self, item) -> "BaseParser":
         if item is Ellipsis:
             return star(self)
 
@@ -49,15 +62,14 @@ class OperatorMixin:
             assert item.stop is None, "Cannot bound slice"
             return least(self, item.start)
 
-
         else:
             assert isinstance(item, int)
             return arr(self, item)
 
-    def __invert__(self) -> 'Alternate':
+    def __invert__(self) -> "Alternate":
         return opt(self)
 
-    def __rshift__(self, other) -> 'Reduce':
+    def __rshift__(self, other) -> "Reduce":
         return red(self, other)
 
 
@@ -67,22 +79,22 @@ class BaseParserMeta(FieldMeta, ABCMeta):
 
 class BaseParser(OperatorMixin, metaclass=BaseParserMeta):
     @abstractmethod
-    def derive(self, token: Token) -> 'BaseParser':
+    def derive(self, token: Token) -> "BaseParser":
         pass
 
     @abstractmethod
     def derive_null(self) -> frozenset:
         pass
 
-    def compact(self) -> 'BaseParser':
+    def compact(self) -> "BaseParser":
         return self._compact(set())
 
-    def _compact(self, seen: set) -> 'BaseParser':
+    def _compact(self, seen: set) -> "BaseParser":
         seen.add(self)
         return self
 
 
-class LazyDerivative(BaseParser, fields='parser token'):
+class LazyDerivative(BaseParser, fields="parser token"):
     """Lazy derivative evaluation of derivative of a parser w.r.t a given token.
     Partially avoids non-terminating recursion.
     """
@@ -133,7 +145,7 @@ class FixedPoint(BaseParser):
                 return self._null_set
 
 
-class Alternate(FixedPoint, fields='left right'):
+class Alternate(FixedPoint, fields="left right"):
     def _compact(self, seen: set) -> BaseParser:
         if self not in seen:
             seen.add(self)
@@ -148,7 +160,7 @@ class Alternate(FixedPoint, fields='left right'):
 
         return self
 
-    def _derive(self, token: Token) -> 'Alternate':
+    def _derive(self, token: Token) -> "Alternate":
         return self.__class__(self.left.derive(token), self.right.derive(token))
 
     def _derive_null(self) -> frozenset:
@@ -158,7 +170,7 @@ class Alternate(FixedPoint, fields='left right'):
         return left_branch | right_branch
 
 
-class Concatenate(FixedPoint, fields='left right'):
+class Concatenate(FixedPoint, fields="left right"):
     def _compact(self, seen: set) -> BaseParser:
         if self not in seen:
             seen.add(self)
@@ -192,8 +204,7 @@ class Concatenate(FixedPoint, fields='left right'):
 
     def _derive(self, token: Token) -> Alternate:
         cls = self.__class__
-        return Alternate(cls(self.left.derive(token), self.right),
-                         cls(Delta(self.left), self.right.derive(token)))
+        return Alternate(cls(self.left.derive(token), self.right), cls(Delta(self.left), self.right.derive(token)))
 
     def _derive_null(self) -> frozenset:
         left_branch = self.left.derive_null()
@@ -213,14 +224,14 @@ class Empty(BaseParser):
         cls._singleton = instance
         return instance
 
-    def derive(self, token: Token) -> 'Empty':
+    def derive(self, token: Token) -> "Empty":
         return empty_parser
 
     def derive_null(self) -> frozenset:
         return frozenset()
 
 
-class Epsilon(BaseParser, fields='_trees'):
+class Epsilon(BaseParser, fields="_trees"):
     def __new__(cls, trees: frozenset):
         if not type(trees) is frozenset:
             raise ValueError(trees)
@@ -231,7 +242,7 @@ class Epsilon(BaseParser, fields='_trees'):
         return super().__new__(cls)
 
     @classmethod
-    def from_value(cls, value) -> 'Epsilon':
+    def from_value(cls, value) -> "Epsilon":
         as_set = frozenset((value,))
         return cls(as_set)
 
@@ -246,7 +257,7 @@ class Epsilon(BaseParser, fields='_trees'):
         return self._trees
 
 
-class Delta(BaseParser, fields='parser'):
+class Delta(BaseParser, fields="parser"):
     """Used to keep a record of skipped parse trees"""
 
     def _compact(self, seen: set) -> Epsilon:
@@ -272,7 +283,7 @@ class Recurrence(FixedPoint):
         return self.parser.derive_null()
 
 
-class Reduce(FixedPoint, fields='parser func'):
+class Reduce(FixedPoint, fields="parser func"):
     def _compact(self, seen: set) -> BaseParser:
         if self not in seen:
             seen.add(self)
@@ -295,14 +306,14 @@ class Reduce(FixedPoint, fields='parser func'):
         else:
             return self
 
-    def _derive(self, token: Token) -> 'Reduce':
+    def _derive(self, token: Token) -> "Reduce":
         return self.__class__(self.parser.derive(token), self.func)
 
     def _derive_null(self) -> frozenset:
         return frozenset(map(self.func, self.parser.derive_null()))
 
 
-class Literal(BaseParser, fields='string'):
+class Literal(BaseParser, fields="string"):
     def derive(self, token: Token) -> BaseParser:
         return Epsilon.from_value(token.second) if token.first == self.string else empty_parser
 
@@ -316,8 +327,8 @@ def plus(parser: BaseParser) -> Reduce:
 
     def red_one_plus(args):
         first, remainder = args
-        if remainder == '':
-            return first,
+        if remainder == "":
+            return (first,)
         return (first,) + remainder
 
     return Reduce(Concatenate(parser, star(parser)), red_one_plus)
@@ -330,7 +341,7 @@ def arr(parser: BaseParser, n: int):
         return tuple(unpack(args, n))
 
     p = parser
-    for i in range(n-1):
+    for i in range(n - 1):
         p = Concatenate(p, parser)
 
     return Reduce(p, red_array)
@@ -341,23 +352,24 @@ def star(parser: BaseParser) -> Recurrence:
 
     def red_repeat(args):
         first, remainder = args
-        if remainder == '':
-            return first,
+        if remainder == "":
+            return (first,)
         return (first,) + remainder
 
     recurrence = Recurrence()
-    recurrence.parser = Alternate(empty_string, Reduce(Concatenate(parser, recurrence),
-                                                       red_repeat)
-                                  )  # recurrence = ~(parser & recurrence)
+    recurrence.parser = Alternate(
+        empty_string, Reduce(Concatenate(parser, recurrence), red_repeat)
+    )  # recurrence = ~(parser & recurrence)
     return recurrence
 
 
 def least(parser: BaseParser, n: int):
     assert n >= 0
     if n > 0:
+
         def reduce_slice(args):
             array, remainder = args
-            if remainder == '':
+            if remainder == "":
                 return array
             return array + remainder
 
@@ -408,4 +420,4 @@ def parse(parser: BaseParser, tokens: Iterable[Token]) -> frozenset:
 
 
 empty_parser = Empty()
-empty_string = Epsilon.from_value('')
+empty_string = Epsilon.from_value("")

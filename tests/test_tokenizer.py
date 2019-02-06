@@ -8,18 +8,18 @@ j = "bob"
 """
 
 expected_tokens = (
-    Token('NEWLINE', '\n'),
-    Token('ID', 'x'),
-    Token('=', '='),
-    Token('ID', 'y'),
-    Token('+', '+'),
-    Token('ID', 'z'),
-    Token('NEWLINE', '\n'),
-    Token('ID', 'j'),
-    Token('=', '='),
-    Token('LIT', '"bob"'),
-    Token('NEWLINE', '\n'),
-    Token('ENDMARKER', 'ENDMARKER'),
+    Token("NEWLINE", "\n"),
+    Token("ID", "x"),
+    Token("=", "="),
+    Token("ID", "y"),
+    Token("+", "+"),
+    Token("ID", "z"),
+    Token("NEWLINE", "\n"),
+    Token("ID", "j"),
+    Token("=", "="),
+    Token("LIT", '"bob"'),
+    Token("NEWLINE", "\n"),
+    Token("ENDMARKER", "ENDMARKER"),
 )
 
 

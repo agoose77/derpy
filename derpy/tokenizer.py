@@ -9,8 +9,8 @@ from re import compile as re_compile, escape
 from typing import Dict, Any, Tuple, Iterable, FrozenSet
 from os import PathLike
 
-PatternType = type(re_compile('.'))
-MatchType = type(re_compile('.').match(' '))
+PatternType = type(re_compile("."))
+MatchType = type(re_compile(".").match(" "))
 
 
 class BaseTokenizer(ABC):
@@ -29,42 +29,43 @@ class RegexTokenizer(BaseTokenizer):
     
     Patterns priority ordered highest to lowest.
     """
+
     NO_MATCH_NAME: str = "NO_MATCH"
     OP_CHARACTERS: str = "+/-*^%!~@.<>:&|="
     PAREN_CHARACTERS: str = "()[]{}"
 
     keywords: FrozenSet[str] = frozenset()
     patterns: Tuple[Tuple[str, str], ...] = (
-        ('NUMBER', r'(0|[1-9]\d*)(\.\d*)?'),
-        ('LIT', r"('([^']+)')|(\"([^\"]+)\")"),
-        ('ID', r"[a-zA-Z_][a-zA-Z0-9_]*"),
-        ('OP', r"|".join(escape(c) for c in OP_CHARACTERS)),
-        ('PAREN', r"|".join(escape(c) for c in PAREN_CHARACTERS)),
-        ('NEWLINE', r'\n'),
-        ('FORMAT', r'[ \t]+'),
+        ("NUMBER", r"(0|[1-9]\d*)(\.\d*)?"),
+        ("LIT", r"('([^']+)')|(\"([^\"]+)\")"),
+        ("ID", r"[a-zA-Z_][a-zA-Z0-9_]*"),
+        ("OP", r"|".join(escape(c) for c in OP_CHARACTERS)),
+        ("PAREN", r"|".join(escape(c) for c in PAREN_CHARACTERS)),
+        ("NEWLINE", r"\n"),
+        ("FORMAT", r"[ \t]+"),
     )
-    default_pattern: Tuple[str, str] = (NO_MATCH_NAME, r'.')
+    default_pattern: Tuple[str, str] = (NO_MATCH_NAME, r".")
 
     def __init__(self):
         self.pattern: PatternType = self.create_pattern()
 
     def create_pattern(self) -> PatternType:
         patterns = self.patterns + (self.default_pattern,)
-        full_match_string = "|".join(f'(?P<{n}>{m})' for n, m in patterns)
+        full_match_string = "|".join(f"(?P<{n}>{m})" for n, m in patterns)
         return re_compile(full_match_string)
 
     def create_context(self, string: str) -> Dict[str, Any]:
-        return {'line_number': 1, 'char_number': 0, 'string': string}
+        return {"line_number": 1, "char_number": 0, "string": string}
 
     def default_handler(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
         return Token(match.lastgroup, value)
 
     def get_error_string(self, match: MatchType, value, context: Dict[str, Any]) -> str:
-        index = match.start() - context['char_number']
-        lines = context['string'].splitlines()
-        line = lines[context['line_number'] - 1]
+        index = match.start() - context["char_number"]
+        lines = context["string"].splitlines()
+        line = lines[context["line_number"] - 1]
 
-        indicator_string = ''.join('^' if i == index else ' ' for i, _ in enumerate(line))
+        indicator_string = "".join("^" if i == index else " " for i, _ in enumerate(line))
         return f"Unable to match character {value!r} on line {context['line_number']}\n{line}\n{indicator_string}"
 
     def handle_OP(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
@@ -84,8 +85,8 @@ class RegexTokenizer(BaseTokenizer):
         pass
 
     def handle_NEWLINE(self, match: MatchType, value, context: Dict[str, Any]) -> Token:
-        context['char_number'] = match.end()
-        context['line_number'] += 1
+        context["char_number"] = match.end()
+        context["line_number"] += 1
 
         return Token("NEWLINE", value)
 

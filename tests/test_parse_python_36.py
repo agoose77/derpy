@@ -6,29 +6,16 @@ from derpy.grammars.python36 import p, PythonTokenizer, ast
 
 test_string = "x = x + 1"
 
-expected_ast = ast.Module(
-    (
-        ast.Assign(
-            (
-                ast.Name('x'),
-            ),
-            ast.BinOp(
-                ast.Name('x'),
-                ast.Add(),
-                ast.Num(1)
-            )
-        ),
-    )
-)
+expected_ast = ast.Module((ast.Assign((ast.Name("x"),), ast.BinOp(ast.Name("x"), ast.Add(), ast.Num(1))),))
 
 expected_tokens = (
-    Token('ID', 'x'),
-    Token('=', '='),
-    Token('ID', 'x'),
-    Token('+', '+'),
-    Token('NUMBER', '1'),
-    Token('NEWLINE', 'NEWLINE'),
-    Token('ENDMARKER', 'ENDMARKER'),
+    Token("ID", "x"),
+    Token("=", "="),
+    Token("ID", "x"),
+    Token("+", "+"),
+    Token("NUMBER", "1"),
+    Token("NEWLINE", "NEWLINE"),
+    Token("ENDMARKER", "ENDMARKER"),
 )
 
 
@@ -59,21 +46,24 @@ class TestParsePython(TestCase):
 
         with ast.patched_ast_module():
             import astor
+
             try:
                 result = astor.to_source(module)
             except AttributeError:
                 if derpy_ast.ENV_VAR_NO_SLOTS not in os.environ:
-                    raise EnvironmentError(f"Environment flag {derpy_ast.ENV_VAR_NO_SLOTS!r} must be defined to support "
-                                           "round-trip code generation.")
+                    raise EnvironmentError(
+                        f"Environment flag {derpy_ast.ENV_VAR_NO_SLOTS!r} must be defined to support "
+                        "round-trip code generation."
+                    )
                 raise
 
-            namespace = {'x': 0}
+            namespace = {"x": 0}
 
             exec(test_string, namespace)
-            self.assertEqual(namespace['x'], 1)
+            self.assertEqual(namespace["x"], 1)
 
             exec(result, namespace)
-            self.assertEqual(namespace['x'], 2)
+            self.assertEqual(namespace["x"], 2)
 
 
 if __name__ == "__main__":

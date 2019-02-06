@@ -8,9 +8,9 @@ from derpy.grammars.python36 import p, PythonTokenizer
 
 
 def main():
-    parser = ArgumentParser(description='Python 3.6 parser')
-    parser.add_argument('filepath', type=Path)
-    parser.add_argument('-w', '--write-file', action='store_true')
+    parser = ArgumentParser(description="Python 3.6 parser")
+    parser.add_argument("filepath", type=Path)
+    parser.add_argument("-w", "--write-file", action="store_true")
     args = parser.parse_args()
 
     tokeniser = PythonTokenizer()

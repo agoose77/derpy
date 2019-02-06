@@ -12,14 +12,13 @@ from os import PathLike
 
 
 class PythonTokenizer(BaseTokenizer):
-
     def tokenize_text(self, source: str) -> Iterable[Token]:
-        string_io = StringIO(source + '\n')
+        string_io = StringIO(source + "\n")
         return self.tokenize_readline(string_io.readline)
 
     def tokenize_file(self, file_path: PathLike) -> Iterable[Token]:
         with open(file_path) as f:
-            string_io = StringIO(f.read() + '\n')
+            string_io = StringIO(f.read() + "\n")
         return self.tokenize_readline(string_io.readline)
 
     def tokenize_readline(self, readline: Callable[[], str]) -> Iterable[Token]:
@@ -30,15 +29,13 @@ class PythonTokenizer(BaseTokenizer):
                     yield Token(value, value)
 
                 else:
-                    yield Token('ID', tok_info.string)
+                    yield Token("ID", tok_info.string)
 
             elif tok_info.type == token.STRING:
-                print('NODE', type(__import__("ast").parse(tok_info.string, mode='eval')), repr(tok_info.string))
-
-                yield Token('LIT', literal_eval(tok_info.string))
+                yield Token("LIT", literal_eval(tok_info.string))
 
             elif tok_info.type == token.NUMBER:
-                yield Token('NUMBER', tok_info.string)
+                yield Token("NUMBER", tok_info.string)
 
             elif tok_info.type in {token.NEWLINE}:
                 yield Token("NEWLINE", "NEWLINE")

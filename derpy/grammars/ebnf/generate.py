@@ -1,4 +1,4 @@
-__all__ = "ParserGenerator",
+__all__ = ("ParserGenerator",)
 
 from derpy.ast import NodeVisitor
 from .ast import CompoundParser
@@ -13,7 +13,7 @@ from derpy import Grammar, lit
 {variable}.freeze()
 """
 
-    def __init__(self, name, variable='g'):
+    def __init__(self, name, variable="g"):
         self.name = name
         self.variable = variable
 
@@ -24,7 +24,7 @@ from derpy import Grammar, lit
             statement = self.visit(rule)
             statements.append(statement)
 
-        rules = '\n'.join(statements)
+        rules = "\n".join(statements)
         return self.grammar_declaration.format(name=self.name, variable=self.variable, rules=rules, self=self)
 
     def visit_Comment(self, node):

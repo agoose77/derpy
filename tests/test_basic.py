@@ -6,9 +6,9 @@ from derpy import lit, Token, rec, parse, unpack
 class TestBasic(unittest.TestCase):
     def test_basic(self):
         parser = rec()
-        parser.parser = ~(parser & lit('1'))
+        parser.parser = ~(parser & lit("1"))
 
-        tokens = [Token('1', '1') for i in range(10)]
+        tokens = [Token("1", "1") for i in range(10)]
         parse_trees = parse(parser, tokens)
         self.assertTrue(parse_trees)
 

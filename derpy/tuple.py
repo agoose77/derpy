@@ -13,9 +13,7 @@ def selects(n: int, *indices: int, first: bool = True) -> Callable[[tuple], tupl
         all_args = tuple(unpack(args, n, first))
         return tuple(all_args[i] for i in indices)
 
-    selects_.__doc__ = (
-        f"Select arguments {indices!r} from parse tree.\n    :param args: parse tree\n"
-    )
+    selects_.__doc__ = f"Select arguments {indices!r} from parse tree.\n    :param args: parse tree\n"
     return selects_
 
 
@@ -31,9 +29,7 @@ def select(n: int, index: int, first: bool = True) -> Callable[[tuple], Any]:
         all_args = tuple(unpack(args, n, first))
         return all_args[index]
 
-    select_.__doc__ = (
-        f"Select argument {index!r} from parse tree.\n    :param args: parse tree\n"
-    )
+    select_.__doc__ = f"Select argument {index!r} from parse tree.\n    :param args: parse tree\n"
     return select_
 
 

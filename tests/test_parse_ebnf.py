@@ -8,42 +8,31 @@ test_string = """dog: (NAME 'barked')+ 'woof'*"""
 expected_ast = ast.Grammar(
     rules=(
         ast.RuleDefinition(
-            name='dog',
+            name="dog",
             parser=ast.ConcatParser(
                 left=ast.OnePlusParser(
                     child=ast.GroupParser(
-                        child=ast.ConcatParser(
-                            left=ast.ID(
-                                name='NAME'
-                            ),
-                            right=ast.LitParser(
-                                lit="'barked'"
-                            )
-                        )
+                        child=ast.ConcatParser(left=ast.ID(name="NAME"), right=ast.LitParser(lit="'barked'"))
                     )
                 ),
-                right=ast.ManyParser(
-                    child=ast.LitParser(
-                        lit="'woof'"
-                    )
-                )
-            )
+                right=ast.ManyParser(child=ast.LitParser(lit="'woof'")),
+            ),
         ),
     )
 )
 
 expected_tokens = (
-    Token('ID', 'dog'),
-    Token(':', ':'),
-    Token('(', '('),
-    Token('ID', 'NAME'),
-    Token('LIT', "'barked'"),
-    Token(')', ')'),
-    Token('+', '+'),
-    Token('LIT', "'woof'"),
-    Token('*', '*'),
-    Token('\n', '\n'),
-    Token('ENDMARKER', 'ENDMARKER')
+    Token("ID", "dog"),
+    Token(":", ":"),
+    Token("(", "("),
+    Token("ID", "NAME"),
+    Token("LIT", "'barked'"),
+    Token(")", ")"),
+    Token("+", "+"),
+    Token("LIT", "'woof'"),
+    Token("*", "*"),
+    Token("\n", "\n"),
+    Token("ENDMARKER", "ENDMARKER"),
 )
 
 

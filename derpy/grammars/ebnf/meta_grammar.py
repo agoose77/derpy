@@ -4,8 +4,9 @@ from . import ast
 
 def emit_grammar_parser(args):
     any_rules_or_nl, end_marker = args
-    rules = tuple([r for r in any_rules_or_nl if r != '\n'])
+    rules = tuple([r for r in any_rules_or_nl if r != "\n"])
     return ast.Grammar(rules)
+
 
 def emit_star(args):
     elem, plus = args
@@ -38,26 +39,23 @@ def emit_concat_parser(args):
     return node
 
 
-e = Grammar('EBNF')
+e = Grammar("EBNF")
 
-e.alt = (e.cat & (lit('|') & e.cat)[...]) >> emit_alt_parser
+e.alt = (e.cat & (lit("|") & e.cat)[...]) >> emit_alt_parser
 e.cat = (e.star & e.star[...]) >> emit_concat_parser
-e.star = (e.plus & ~lit('*')) >> emit_star
-e.plus = (e.element & ~lit('+')) >> emit_plus
+e.star = (e.plus & ~lit("*")) >> emit_star
+e.plus = (e.element & ~lit("+")) >> emit_plus
 
-e.optional = (lit('[') & e.alt & lit(']')) >> select(3, 1) >> ast.OptParser
-e.grouped = (lit('(') & e.alt & lit(')')) >> select(3, 1) >> ast.GroupParser
+e.optional = (lit("[") & e.alt & lit("]")) >> select(3, 1) >> ast.OptParser
+e.grouped = (lit("(") & e.alt & lit(")")) >> select(3, 1) >> ast.GroupParser
 
-e.element = (lit('ID') >> ast.ID |
-             lit('LIT') >> ast.LitParser |
-             e.grouped |
-             e.optional)
+e.element = lit("ID") >> ast.ID | lit("LIT") >> ast.LitParser | e.grouped | e.optional
 
-e.rule = (lit('ID') & lit(':') & e.alt & lit('\n')) >> selects(4, 0, 2) >> ast.RuleDefinition._make
-e.comment = (lit('COMMENT') & lit('\n')) >> select(2, 0) >> ast.Comment
+e.rule = (lit("ID") & lit(":") & e.alt & lit("\n")) >> selects(4, 0, 2) >> ast.RuleDefinition._make
+e.comment = (lit("COMMENT") & lit("\n")) >> select(2, 0) >> ast.Comment
 
-e.stmt = e.rule | e.comment | lit('\n')
+e.stmt = e.rule | e.comment | lit("\n")
 
-e.grammar = (e.stmt[...] & lit('ENDMARKER')) >> emit_grammar_parser
+e.grammar = (e.stmt[...] & lit("ENDMARKER")) >> emit_grammar_parser
 
 e.freeze()
